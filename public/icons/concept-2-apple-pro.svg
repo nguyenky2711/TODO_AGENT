@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient (Vibrant Apple-style Indigo/Purple) -->
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="50%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#7C3AED" />
+    </linearGradient>
+
+    <!-- Frosted Glass Gradient -->
+    <linearGradient id="glassGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255, 255, 255, 0.35)" />
+      <stop offset="100%" stop-color="rgba(255, 255, 255, 0.08)" />
+    </linearGradient>
+
+    <!-- Glowing Core Gradient -->
+    <radialGradient id="orbGlow2" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.9" />
+      <stop offset="60%" stop-color="#818CF8" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#6366F1" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Shadow -->
+    <filter id="shadow2" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#1E1B4B" flood-opacity="0.5" />
+    </filter>
+
+    <filter id="coreGlow2" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="24" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="512" height="512" fill="url(#bg2)" />
+
+  <!-- Inner Top-Left Lighting Highlight -->
+  <circle cx="100" cy="100" r="220" fill="rgba(255,255,255,0.15)" filter="blur(60px)" />
+  <circle cx="400" cy="420" r="180" fill="#312E81" opacity="0.4" filter="blur(50px)" />
+
+  <!-- Frosted Glass Geometric Plate / Shield -->
+  <rect x="86" y="86" width="340" height="340" rx="72" fill="url(#glassGrad2)" stroke="rgba(255, 255, 255, 0.4)" stroke-width="3" filter="url(#shadow2)" />
+
+  <!-- Glowing Agentic Center Orb -->
+  <circle cx="310" cy="190" r="110" fill="url(#orbGlow2)" filter="url(#coreGlow2)" />
+
+  <!-- Crisp Pure White Checkmark -->
+  <path d="M 160 260 L 235 335 C 243 343, 257 343, 265 335 L 360 195" 
+        fill="none" 
+        stroke="#FFFFFF" 
+        stroke-width="44" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" 
+        filter="url(#shadow2)" />
+
+  <!-- AI Spark Icon on Top -->
+  <path d="M 365 120 Q 365 155 400 155 Q 365 155 365 190 Q 365 155 330 155 Q 365 155 365 120 Z" 
+        fill="#F0FDF4" 
+        stroke="#38BDF8" 
+        stroke-width="3" 
+        filter="url(#coreGlow2)" />
+</svg>

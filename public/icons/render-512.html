@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 512px; height: 512px; overflow: hidden; background: transparent; }
+    svg { width: 512px; height: 512px; display: block; }
+  </style>
+</head>
+<body>
+  <div id="icon-root"></div>
+  <script>
+    fetch('./concept-3-infinity-loop.svg')
+      .then(res => res.text())
+      .then(svgText => {
+        document.getElementById('icon-root').innerHTML = svgText;
+      });
+  </script>
+</body>
+</html>

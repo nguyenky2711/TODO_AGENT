@@ -212,6 +212,8 @@ export class TaskService {
   static async delete(idOrTitle: string): Promise<void> {
     const task = await this.getById(idOrTitle);
     const targetId = task ? task.id : idOrTitle;
+    await run(`DELETE FROM task_tags WHERE task_id = ?`, [targetId]);
+    await run(`DELETE FROM task_notes WHERE task_id = ?`, [targetId]);
     await run(`DELETE FROM tasks WHERE id = ?`, [targetId]);
   }
 

@@ -91,9 +91,10 @@ export class ProjectService {
     const project = await this.getById(idOrName);
     const targetId = project ? project.id : idOrName;
 
-    // Detach all tasks belonging to this project (so they safely become standalone tasks)
-    await run(`UPDATE tasks SET project_id = NULL WHERE project_id = ?`, [targetId]);
-
+    // Detach all tasks belonging to this project and clear milestone references
+    await run(`UPDATE tasks SET project_id = NULL, milestone_id = NULL WHERE project_id = ?`, [targetId]);
+    // Remove milestones belonging to this project
+    await run(`DELETE FROM project_milestones WHERE project_id = ?`, [targetId]);
     // Permanently remove the project
     await run(`DELETE FROM projects WHERE id = ?`, [targetId]);
   }

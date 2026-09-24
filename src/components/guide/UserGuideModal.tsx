@@ -44,9 +44,31 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
 
   const handleCopy = (text: string) => {
     const clean = text.replace(/^>\s*[*"]?|[*"]?\s*$/g, '').trim();
-    navigator.clipboard.writeText(clean);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(clean).catch(() => fallbackCopy(clean));
+      } else {
+        fallbackCopy(clean);
+      }
+    } catch {
+      fallbackCopy(clean);
+    }
     setCopiedPrompt(clean);
     setTimeout(() => setCopiedPrompt(null), 2000);
+  };
+
+  const fallbackCopy = (text: string) => {
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    } catch {}
   };
 
   const handleScrollTo = (sectionIdx: number) => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Key, Brain, Database, Check, Save, RotateCw, Trash2, HardDrive } from 'lucide-react';
+import { X, Key, Brain, Database, Check, Save, RotateCw, Trash2, HardDrive, Bell, Volume2, Smartphone } from 'lucide-react';
+import { NotificationService } from '../../services/notification.service';
 import { MemoryService } from '../../services/memory.service';
 import { AgentMemory } from '../../types';
 import { getDatabaseSize } from '../../db/sqlite';
@@ -23,6 +24,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [newMemKey, setNewMemKey] = useState('');
   const [newMemVal, setNewMemVal] = useState('');
   const [dbSize, setDbSize] = useState('0 KB');
+  const [notifStatus, setNotifStatus] = useState<'granted' | 'denied' | 'default' | 'unsupported'>('default');
 
   useEffect(() => {
     if (isOpen) {
@@ -31,6 +33,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setApiKey(saved);
       setModelName(savedModel);
       setIsSavedKey(false);
+      setNotifStatus(NotificationService.getPermissionStatus());
       loadMemories();
     }
   }, [isOpen]);
@@ -208,16 +211,97 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </button>
             </form>
           </div>
-
-          {/* SECTION 3: LOCAL-FIRST INFO & STORAGE SIZE */}
-          <div className="p-3 rounded-xl bg-secondary/30 border border-border/50 text-[11px] text-muted-foreground flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Database className="w-4 h-4 text-emerald-500" />
-              <span>Dung lượng đã sử dụng: <strong className="font-mono text-foreground">{dbSize}</strong></span>
+          {/* SECTION 2.5: NOTIFICATIONS & AUDIO REMINDERS */}
+          <div className="p-4 rounded-xl bg-secondary/40 border border-border space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-foreground font-semibold text-xs">
+                <Bell className="w-4 h-4 text-neon-cyan" />
+                <span>Thông Báo & Nhắc Việc (iOS / Mobile / Web)</span>
+              </div>
+              <span
+                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                  notifStatus === 'granted'
+                    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                    : notifStatus === 'denied'
+                    ? 'bg-destructive/10 text-destructive border-destructive/30'
+                    : 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                }`}
+              >
+                {notifStatus === 'granted'
+                  ? '✓ Đã kích hoạt'
+                  : notifStatus === 'denied'
+                  ? '✕ Bị chặn trong trình duyệt'
+                  : notifStatus === 'unsupported'
+                  ? 'Chưa hỗ trợ đẩy'
+                  : 'Chưa cấp quyền'}
+              </span>
             </div>
-            <span className="font-mono text-emerald-500 font-bold">100% Offline</span>
+
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              App sẽ tự động phát âm chuông và gửi thông báo nhắc việc trước giờ diễn ra (theo cài đặt của từng công việc).
+            </p>
+
+            <div className="flex items-center gap-2 pt-1">
+              {notifStatus !== 'granted' && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const res = await NotificationService.requestPermission();
+                    setNotifStatus(res);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-colors flex items-center gap-1.5 shadow-xs"
+                >
+                  <Bell className="w-3.5 h-3.5" />
+                  Cho phép nhận thông báo
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => NotificationService.testChimeAndNotification()}
+                className="px-3 py-1.5 rounded-lg bg-secondary border border-border hover:bg-secondary/80 text-foreground text-xs font-semibold transition-colors flex items-center gap-1.5"
+              >
+                <Volume2 className="w-3.5 h-3.5 text-neon-cyan" />
+                Thử chuông & rung
+              </button>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-card border border-border/70 text-[11px] text-muted-foreground flex items-start gap-2">
+              <Smartphone className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+              <div>
+                <strong className="text-foreground">Lưu ý cho iPhone (iOS):</strong> Để nhận thông báo đẩy như app native, hãy mở Safari và bấm nút <strong>Chia sẻ</strong> &rarr; chọn <strong>Thêm vào Màn hình chính (Add to Home Screen)</strong>.
+              </div>
+            </div>
           </div>
 
+
+          {/* SECTION 3: LOCAL-FIRST INFO & STORAGE SIZE */}
+          <div className="p-3 rounded-xl bg-secondary/30 border border-border/50 text-[11px] text-muted-foreground flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Database className="w-4 h-4 text-emerald-500" />
+                <span>Dung lượng đã sử dụng: <strong className="font-mono text-foreground">{dbSize}</strong></span>
+              </div>
+              <span className="font-mono text-emerald-500 font-bold">100% Offline</span>
+            </div>
+            <div className="pt-2 border-t border-border/40 flex items-center justify-between">
+              <span className="text-[10px]">Cần lại dữ liệu mẫu ban đầu?</span>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (window.confirm('Khôi phục các dự án và công việc mẫu ban đầu? Dữ liệu hiện tại sẽ được thêm mẫu.')) {
+                    await seedInitialDataIfNeeded(true);
+                    await loadMemories();
+                    onDataMutated();
+                  }
+                }}
+                className="px-2 py-1 rounded bg-secondary hover:bg-secondary/80 text-foreground font-semibold text-[10px] flex items-center gap-1 transition-colors"
+              >
+                <RotateCw className="w-3 h-3" />
+                Nạp lại dữ liệu mẫu
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="p-3 border-t border-border flex justify-end">

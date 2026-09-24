@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Icon Concepts Preview - Todo Agent</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: #090d16; color: #f1f5f9; padding: 40px 20px; min-height: 100vh; }
+    h1 { text-align: center; font-size: 28px; margin-bottom: 8px; color: #fff; }
+    p.sub { text-align: center; color: #94a3b8; margin-bottom: 40px; font-size: 15px; }
+    
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 32px; max-width: 1200px; margin: 0 auto; }
+    .card { background: #131b2e; border: 1px solid #1e293b; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; align-items: center; }
+    .card:hover { border-color: #6366f1; }
+    .card-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; color: #e2e8f0; }
+    .card-desc { font-size: 13px; color: #94a3b8; text-align: center; margin-bottom: 24px; min-height: 38px; }
+    
+    .preview-box {
+      width: 160px;
+      height: 160px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      background: #020617;
+      border-radius: 24px;
+      border: 1px dashed #334155;
+      padding: 12px;
+    }
+    .preview-box img { width: 100%; height: 100%; object-fit: contain; }
+
+    /* iOS Squircle Shape Simulation */
+    .ios-icon-large {
+      width: 130px;
+      height: 130px;
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 16px 32px -8px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1);
+      margin-bottom: 24px;
+      transition: transform 0.2s;
+    }
+    .ios-icon-large:hover { transform: scale(1.04); }
+    .ios-icon-large img { width: 100%; height: 100%; display: block; }
+
+    .sizes-row { display: flex; align-items: center; gap: 16px; margin-top: auto; padding-top: 20px; border-top: 1px solid #1e293b; width: 100%; justify-content: center; }
+    .size-box { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .size-label { font-size: 11px; color: #64748b; }
+    .size-img { border-radius: 22.5%; overflow: hidden; display: block; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+
+    .tag { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; margin-bottom: 12px; }
+    .tag-selected { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .tag-1 { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
+    .tag-2 { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+  </style>
+</head>
+<body>
+  <h1>📱 Thiết Kế Icon & Favicon SVG</h1>
+  <p class="sub">File SVG gốc hiện tại là <b>100% Nền trong suốt (Transparent)</b> cực kỳ thoáng và sạch khi làm Favicon/Logo</p>
+
+  <div class="grid">
+    <!-- Concept 3 (Active) -->
+    <div class="card" style="border-color: #10b981;">
+      <span class="tag tag-selected">✓ Đang áp dụng (Concept 03)</span>
+      <div class="card-title">Transparent Autonomous Loop</div>
+      <div class="card-desc">SVG nền trong suốt 100% — dấu tick laser, vòng lặp ribbon neon và các hạt năng lượng AI.</div>
+      
+      <div class="preview-box">
+        <img src="../favicon.svg" alt="Transparent SVG Favicon">
+      </div>
+      <span style="font-size: 12px; color: #38bdf8; margin-bottom: 16px;">(SVG Logo / Favicon không nền)</span>
+
+      <div class="sizes-row">
+        <div class="size-box">
+          <img class="size-img" src="../apple-touch-icon.png" style="width: 56px; height: 56px;">
+          <span class="size-label">iOS Icon (180px)</span>
+        </div>
+        <div class="size-box">
+          <img class="size-img" src="../favicon-32x32.png" style="width: 32px; height: 32px;">
+          <span class="size-label">32px</span>
+        </div>
+        <div class="size-box">
+          <img class="size-img" src="../favicon-16x16.png" style="width: 16px; height: 16px;">
+          <span class="size-label">16px</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Concept 1 -->
+    <div class="card">
+      <span class="tag tag-1">Concept 01 (Backup)</span>
+      <div class="card-title">AI Spark & Neural Check</div>
+      <div class="card-desc">Nền Midnight Indigo, dấu Checkmark dạ quang chuyển tiếp thành ngôi sao AI Sparkle rực rỡ.</div>
+      
+      <div class="ios-icon-large">
+        <img src="./concept-1-spark-check.svg" alt="Concept 1">
+      </div>
+    </div>
+
+    <!-- Concept 2 -->
+    <div class="card">
+      <span class="tag tag-2">Concept 02 (Backup)</span>
+      <div class="card-title">Pro Indigo & Luminous Core</div>
+      <div class="card-desc">Phong cách Raycast / Linear: nền tím rực sáng, checkmark trắng nổi khối trên đĩa kính mờ.</div>
+      
+      <div class="ios-icon-large">
+        <img src="./concept-2-apple-pro.svg" alt="Concept 2">
+      </div>
+    </div>
+  </div>
+</body>
+</html>

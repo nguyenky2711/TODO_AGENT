@@ -26,32 +26,60 @@ function openIDB(): Promise<IDBDatabase> {
 async function loadFromIDB(): Promise<Uint8Array | null> {
   try {
     const db = await openIDB();
-    return new Promise((resolve) => {
+    const idbResult = await new Promise<any>((resolve) => {
       const tx = db.transaction(IDB_STORE, 'readonly');
       const store = tx.objectStore(IDB_STORE);
       const req = store.get(DB_STORAGE_KEY);
-      req.onsuccess = () => {
-        if (req.result && req.result instanceof Uint8Array) {
-          resolve(req.result);
-        } else {
-          resolve(null);
-        }
-      };
+      req.onsuccess = () => resolve(req.result ?? null);
       req.onerror = () => resolve(null);
     });
+
+    if (idbResult) {
+      if (idbResult instanceof Uint8Array) {
+        return idbResult;
+      }
+      if (idbResult instanceof ArrayBuffer) {
+        return new Uint8Array(idbResult);
+      }
+      if (ArrayBuffer.isView(idbResult)) {
+        return new Uint8Array(idbResult.buffer, idbResult.byteOffset, idbResult.byteLength);
+      }
+      if (idbResult.buffer && idbResult.buffer instanceof ArrayBuffer) {
+        return new Uint8Array(idbResult.buffer);
+      }
+    }
   } catch (err) {
-    console.warn('Could not load from IndexedDB, fallback to fresh DB:', err);
-    return null;
+    console.warn('Could not load from IndexedDB, trying localStorage fallback:', err);
   }
+
+  // Fallback: Check localStorage backup
+  try {
+    const localBackup = localStorage.getItem(DB_STORAGE_KEY);
+    if (localBackup) {
+      const binaryStr = atob(localBackup);
+      const bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+      return bytes;
+    }
+  } catch (err) {
+    console.warn('Could not load from localStorage fallback:', err);
+  }
+
+  return null;
 }
 
 async function saveToIDB(data: Uint8Array): Promise<void> {
+  // 1. Primary storage: IndexedDB (Store as ArrayBuffer for cross-browser safety)
   try {
     const db = await openIDB();
-    return new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(IDB_STORE, 'readwrite');
       const store = tx.objectStore(IDB_STORE);
-      store.put(data, DB_STORAGE_KEY);
+      // Slice buffer to prevent storing a SharedArrayBuffer or detached view
+      const bufferToStore = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+      store.put(bufferToStore, DB_STORAGE_KEY);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
       tx.onabort = () => reject(new Error('IndexedDB transaction aborted'));
@@ -59,8 +87,23 @@ async function saveToIDB(data: Uint8Array): Promise<void> {
   } catch (err) {
     console.warn('Could not save to IndexedDB:', err);
   }
-}
 
+  // 2. Secondary fallback storage: localStorage (for small to medium DB sizes)
+  try {
+    if (data.length <= 4 * 1024 * 1024) { // Up to ~4MB
+      let binary = '';
+      const len = data.byteLength;
+      const chunkSize = 8192;
+      for (let i = 0; i < len; i += chunkSize) {
+        const chunk = data.subarray(i, Math.min(i + chunkSize, len));
+        binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
+      }
+      localStorage.setItem(DB_STORAGE_KEY, btoa(binary));
+    }
+  } catch (err) {
+    // If quota exceeded or storage blocked, IndexedDB is already saved
+  }
+}
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
@@ -206,8 +249,10 @@ export async function getDatabase(): Promise<Database> {
     } else {
       db = new SQL.Database();
     }
-
-    // Execute Schema
+    // Enable Foreign Keys and execute schema
+    try {
+      db.run("PRAGMA foreign_keys = ON;");
+    } catch (e) {}
     db.run(SCHEMA_SQL);
     try {
       db.run("ALTER TABLE tasks ADD COLUMN color TEXT;");

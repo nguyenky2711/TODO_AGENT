@@ -1,25 +1,42 @@
 import { query, run } from './sqlite';
 
-export async function seedInitialDataIfNeeded(): Promise<void> {
-  // Check if initial seeding was already done in the past
-  const seedFlag = await query<{ value: string }>('SELECT value FROM settings WHERE key = ?', ['initial_seed_completed']);
-  if (seedFlag && seedFlag.length > 0 && seedFlag[0].value === 'true') {
-    return; // Already seeded in the past, never resurrect deleted data
-  }
+const SEED_STORAGE_KEY = 'productivity_agent_seeded';
 
-  const existingProjects = await query('SELECT count(*) as count FROM projects');
-  if (existingProjects && existingProjects[0] && existingProjects[0].count > 0) {
-    // If projects already exist from earlier versions, mark flag and return
-    await run("INSERT OR REPLACE INTO settings (key, value) VALUES ('initial_seed_completed', 'true')");
-    return;
-  }
+export async function seedInitialDataIfNeeded(force: boolean = false): Promise<void> {
+  if (!force) {
+    // Check persistent browser storage flag first
+    try {
+      if (localStorage.getItem(SEED_STORAGE_KEY) === 'true') {
+        return; // Already seeded in the past, never resurrect deleted projects/tasks
+      }
+    } catch {}
 
-  const existingTasks = await query('SELECT count(*) as count FROM tasks');
-  if (existingTasks && existingTasks[0] && existingTasks[0].count > 0) {
-    await run("INSERT OR REPLACE INTO settings (key, value) VALUES ('initial_seed_completed', 'true')");
-    return;
-  }
+    // Check SQLite settings table
+    try {
+      const seedFlag = await query<{ value: string }>('SELECT value FROM settings WHERE key = ?', ['initial_seed_completed']);
+      if (seedFlag && seedFlag.length > 0 && seedFlag[0].value === 'true') {
+        try { localStorage.setItem(SEED_STORAGE_KEY, 'true'); } catch {}
+        return;
+      }
 
+      const existingProjects = await query('SELECT count(*) as count FROM projects');
+      if (existingProjects && existingProjects[0] && existingProjects[0].count > 0) {
+        try { localStorage.setItem(SEED_STORAGE_KEY, 'true'); } catch {}
+        await run("INSERT OR REPLACE INTO settings (key, value) VALUES ('initial_seed_completed', 'true')");
+        return;
+      }
+
+      const existingTasks = await query('SELECT count(*) as count FROM tasks');
+      if (existingTasks && existingTasks[0] && existingTasks[0].count > 0) {
+        try { localStorage.setItem(SEED_STORAGE_KEY, 'true'); } catch {}
+        await run("INSERT OR REPLACE INTO settings (key, value) VALUES ('initial_seed_completed', 'true')");
+        return;
+      }
+    } catch (err) {
+      console.warn('Error checking seed status, skipping seed to prevent data overwrite:', err);
+      return;
+    }
+  }
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
   
@@ -93,6 +110,7 @@ export async function seedInitialDataIfNeeded(): Promise<void> {
       ('planning_style', 'balanced', 'Lối lập kế hoạch cân bằng giữa công việc và giải trí', datetime('now'));
   `);
 
-  // Permanently mark initial seed as completed
+  // Permanently mark initial seed as completed in both SQLite settings and localStorage
+  try { localStorage.setItem(SEED_STORAGE_KEY, 'true'); } catch {}
   await run("INSERT OR REPLACE INTO settings (key, value) VALUES ('initial_seed_completed', 'true')");
 }

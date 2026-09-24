@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bg1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B0F19" />
+      <stop offset="45%" stop-color="#1E1B4B" />
+      <stop offset="100%" stop-color="#2E1065" />
+    </linearGradient>
+
+    <!-- Glowing Stroke Gradient -->
+    <linearGradient id="checkGrad1" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#06B6D4" />
+      <stop offset="40%" stop-color="#3B82F6" />
+      <stop offset="75%" stop-color="#8B5CF6" />
+      <stop offset="100%" stop-color="#EC4899" />
+    </linearGradient>
+
+    <!-- Sparkle Gradient -->
+    <linearGradient id="sparkGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="40%" stop-color="#67E8F9" />
+      <stop offset="100%" stop-color="#A855F7" />
+    </linearGradient>
+
+    <!-- Glow Filter -->
+    <filter id="glow1" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="20" result="blur1" />
+      <feGaussianBlur stdDeviation="40" result="blur2" />
+      <feMerge>
+        <feMergeNode in="blur2" />
+        <feMergeNode in="blur1" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Shadow -->
+    <filter id="shadow1" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.6" />
+    </filter>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="512" height="512" fill="url(#bg1)" />
+
+  <!-- Ambient Core Glows -->
+  <circle cx="340" cy="180" r="140" fill="#6366F1" opacity="0.28" filter="blur(50px)" />
+  <circle cx="200" cy="320" r="130" fill="#06B6D4" opacity="0.22" filter="blur(45px)" />
+
+  <!-- Subtle Glass Border -->
+  <rect x="24" y="24" width="464" height="464" rx="100" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2" />
+
+  <!-- Central Visual Element -->
+  <g filter="url(#shadow1)">
+    <!-- Dynamic Checkmark Path -->
+    <path d="M 125 265 L 215 355 C 224 364, 238 364, 247 355 L 360 210" 
+          fill="none" 
+          stroke="url(#checkGrad1)" 
+          stroke-width="46" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+
+    <!-- AI Primary Sparkle (Top-Right of Check) -->
+    <path d="M 370 95 Q 370 165 440 165 Q 370 165 370 235 Q 370 165 300 165 Q 370 165 370 95 Z" 
+          fill="url(#sparkGrad1)" 
+          filter="url(#glow1)" />
+
+    <!-- AI Center Star Core Core Highlight -->
+    <circle cx="370" cy="165" r="7" fill="#FFFFFF" />
+
+    <!-- AI Mini Accent Spark (Top-Left) -->
+    <path d="M 160 140 Q 160 170 190 170 Q 160 170 160 200 Q 160 170 130 170 Q 160 170 160 140 Z" 
+          fill="#38BDF8" 
+          opacity="0.8" />
+  </g>
+</svg>
