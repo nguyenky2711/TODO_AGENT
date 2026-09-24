@@ -156,4 +156,84 @@ export const AGENT_TOOLS: FunctionDeclaration[] = [
       required: ['id', 'date', 'startTime'],
     },
   },
+  {
+    name: 'suggest_daily_priorities',
+    category: 'query',
+    description: 'Phân tích deadline, độ quan trọng, độ khó và thời lượng để gợi ý hôm nay nên làm gì trước',
+    parameters: {
+      type: 'object',
+      properties: {
+        date: { type: 'string', description: 'Ngày cần đánh giá (mặc định hôm nay YYYY-MM-DD)' },
+        energyPreference: {
+          type: 'string',
+          enum: ['HIGH', 'LOW', 'BALANCED'],
+          description: 'Phong cách năng lượng: HIGH (Eat the Frog, việc khó trước), LOW (Quick Wins, việc nhẹ tạo đà), BALANCED (cân bằng)',
+        },
+      },
+    },
+  },
+  {
+    name: 'summarize_work',
+    category: 'query',
+    description: 'Tổng kết công việc đã làm được trong tuần/tháng, kiểm tra việc còn chưa xong hoặc bị trễ hạn',
+    parameters: {
+      type: 'object',
+      properties: {
+        timeFrame: {
+          type: 'string',
+          enum: ['today', 'this_week', 'last_week', 'month'],
+          description: 'Khung thời gian cần tổng hợp báo cáo (mặc định this_week)',
+        },
+      },
+    },
+  },
+  {
+    name: 'natural_search_tasks',
+    category: 'query',
+    description: 'Tìm kiếm công việc bằng câu tự nhiên (ví dụ: "mấy việc liên quan đến khách hàng tháng trước", "task báo cáo chưa xong")',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Câu tìm kiếm bằng ngôn ngữ tự nhiên' },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'breakdown_goal',
+    category: 'mutation',
+    description: 'Phân rã mục tiêu lớn dài hạn thành các công việc nhỏ theo tuần và khởi tạo dự án',
+    parameters: {
+      type: 'object',
+      properties: {
+        goalTitle: { type: 'string', description: 'Tên mục tiêu lớn (ví dụ: "Học tiếng Anh 6 tháng", "Làm portfolio 4 tuần")' },
+        durationMonths: { type: 'number', description: 'Thời gian mục tiêu tính theo tháng (ví dụ: 6)' },
+        hoursPerWeek: { type: 'number', description: 'Số giờ có thể dành mỗi tuần (ví dụ: 5)' },
+      },
+      required: ['goalTitle'],
+    },
+  },
+  {
+    name: 'get_urgent_tasks',
+    category: 'query',
+    description: 'Tra cứu danh sách công việc khẩn cấp trong N ngày tới hoặc có mức ưu tiên cao (HIGH)',
+    parameters: {
+      type: 'object',
+      properties: {
+        days: { type: 'number', description: 'Số ngày tới cần kiểm tra hạn chót (mặc định 3)' },
+      },
+    },
+  },
+  {
+    name: 'reschedule_overdue_tasks',
+    category: 'mutation',
+    description: 'Dời tất cả công việc chưa xong của ngày hôm nay hoặc công việc quá hạn sang ngày mai hoặc ngày chỉ định',
+    parameters: {
+      type: 'object',
+      properties: {
+        targetDate: { type: 'string', description: 'Ngày chuyển sang (YYYY-MM-DD), mặc định ngày mai' },
+        startTime: { type: 'string', description: 'Giờ bắt đầu mặc định (HH:mm), mặc định 09:00' },
+      },
+    },
+  },
 ];

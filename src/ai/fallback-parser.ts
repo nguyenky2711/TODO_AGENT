@@ -12,6 +12,73 @@ export class FallbackParser {
     tomorrow.setDate(now.getDate() + 1);
     const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
+    // Intent 0.1: Prioritization suggestion ("hôm nay nên làm gì trước", "gợi ý ưu tiên", "việc ưu tiên")
+    if (text.includes('nên làm gì trước') || text.includes('gợi ý ưu tiên') || text.includes('ưu tiên hôm nay') || text.includes('làm gì trước')) {
+      return {
+        toolCalls: [{
+          name: 'suggest_daily_priorities',
+          args: { date: todayStr, energyPreference: text.includes('khó') ? 'HIGH' : (text.includes('dễ') || text.includes('nhanh') ? 'LOW' : 'BALANCED') },
+        }],
+      };
+    }
+
+    // Intent 0.2: Work summary & Overdue ("tuần này tôi đã làm được gì", "việc chưa xong", "việc bị trễ")
+    if (
+      text.includes('đã làm được gì') ||
+      text.includes('làm được gì') ||
+      text.includes('tổng kết tuần') ||
+      text.includes('còn gì chưa xong') ||
+      text.includes('chưa xong') ||
+      text.includes('bị trễ') ||
+      text.includes('trễ hạn')
+    ) {
+      let timeFrame = 'this_week';
+      if (text.includes('hôm nay')) timeFrame = 'today';
+      else if (text.includes('tháng')) timeFrame = 'month';
+      else if (text.includes('tuần trước')) timeFrame = 'last_week';
+
+      return {
+        toolCalls: [{
+          name: 'summarize_work',
+          args: { timeFrame },
+        }],
+      };
+    }
+
+    // Intent 0.3: Urgent tasks ("việc gì gấp trong 3 ngày", "việc khẩn cấp")
+    if (text.includes('việc gì gấp') || text.includes('việc gấp') || text.includes('khẩn cấp') || text.includes('trong 3 ngày')) {
+      let days = 3;
+      const daysMatch = text.match(/(\d+)\s*ngày/);
+      if (daysMatch) days = parseInt(daysMatch[1], 10);
+
+      return {
+        toolCalls: [{
+          name: 'get_urgent_tasks',
+          args: { days },
+        }],
+      };
+    }
+
+    // Intent 0.4: Reschedule overdue / today tasks ("dời việc sang mai", "dời việc trễ")
+    if (text.includes('dời việc') || text.includes('dời sang mai') || text.includes('dời các việc')) {
+      return {
+        toolCalls: [{
+          name: 'reschedule_overdue_tasks',
+          args: { targetDate: tomorrowStr, startTime: '09:00' },
+        }],
+      };
+    }
+
+    // Intent 0.5: Natural Search ("mấy việc liên quan đến...", "tìm việc liên quan đến...")
+    if (text.startsWith('mấy việc liên quan') || text.startsWith('các việc liên quan') || text.includes('liên quan đến khách hàng') || text.includes('tháng trước')) {
+      return {
+        toolCalls: [{
+          name: 'natural_search_tasks',
+          args: { query: prompt },
+        }],
+      };
+    }
+
     // Intent 1: Check schedule for tomorrow / today
     if (text.includes('mai') && (text.includes('có gì') || text.includes('lịch') || text.includes('việc gì') || text.includes('làm gì'))) {
       return {

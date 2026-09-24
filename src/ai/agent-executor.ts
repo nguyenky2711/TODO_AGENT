@@ -7,6 +7,10 @@ import { ProjectService } from '../services/project.service';
 import { CalendarService } from '../services/calendar.service';
 import { AuditService } from '../services/audit.service';
 import { MemoryService } from '../services/memory.service';
+import { PriorityService } from '../services/priority.service';
+import { AnalyticsService } from '../services/analytics.service';
+import { NaturalSearchService } from '../services/natural-search.service';
+import { GoalService } from '../services/goal.service';
 
 const geminiProvider = new GeminiProvider();
 
@@ -31,24 +35,22 @@ export class AgentExecutor {
 Bạn là Personal Productivity Agent — trợ lý năng suất cá nhân thông minh trên máy tính cá nhân.
 Thời gian hiện tại: Hôm nay là ${currentDayName}, ngày ${todayStr} (YYYY-MM-DD).
 
-Nhiệm vụ của bạn:
-1. Giúp người dùng quản lý công việc (Todo), theo dõi dự án (Project), xem và sắp xếp lịch làm việc (Calendar).
+Nhiệm vụ cốt lõi:
+1. Quản lý công việc (Todo), theo dõi dự án (Project), xem và sắp xếp lịch làm việc (Calendar).
 2. Tự động tìm khoảng thời gian trống (free time) và đề xuất hoặc xếp lịch hợp lý.
 3. Tham khảo thói quen cá nhân của người dùng đã lưu trong Memory: [${memoryContext}].
 4. Trả lời súc tích, thân thiện bằng tiếng Việt, dùng icon và định dạng markdown rõ ràng.
-5. Khi người dùng yêu cầu thực hiện hành động, hãy gọi tool tương ứng:
-   - Tra cứu: get_tasks, get_calendar_range, find_free_time, get_projects
-   - Thao tác: create_task, update_task, schedule_task, complete_task, delete_task, create_project, delete_project
-6. QUY TRÌNH XỬ LÝ NHIỀU BƯỚC (Multi-step reasoning & planning):
-   - Với các yêu cầu phức tạp (như "dời việc không gấp hôm nay sang mai", "tìm việc ưu tiên", "sắp xếp lại lịch"):
-     Bước 1: Gọi tool tra cứu (như get_tasks) để lấy dữ liệu thực tế.
-     Bước 2: Đọc dữ liệu trả về từ tool, phân tích kỹ (độ ưu tiên priority, hạn chót dueDate, tiêu đề) để xác định danh sách các việc cần điều chỉnh.
-     Bước 3: Gọi tool cập nhật (như update_task hoặc schedule_task) cho từng công việc cần thay đổi.
-     Bước 4: Sau khi đã thực hiện xong các thay đổi, tổng kết ngắn gọn, rõ ràng các hành động đã làm cho người dùng.
-7. QUY TẮC CHỐNG TRÙNG LẶP (Anti-duplication rule - BẮT BUỘC):
-   - Khi người dùng gửi thêm một lịch trình/công việc mới (ví dụ: "17h30-18h sẽ là ăn uống"), CHỈ gọi create_task cho CÔNG VIỆC MỚI ĐÓ.
-   - TUYỆT ĐỐI KHÔNG gọi lại create_task cho các công việc đã được tạo ở các tin nhắn trước trong lịch sử trò chuyện (như "Tập thể dục thể thao").
-   - Nếu bạn muốn tóm tắt toàn bộ lịch trình thì chỉ cần viết bằng văn bản, KHÔNG ĐƯỢC gọi tool create_task cho những việc đã có sẵn.
+5. Khi người dùng yêu cầu, hãy gọi tool phù hợp:
+   - Gợi ý ưu tiên hôm nay: suggest_daily_priorities (kèm giải thích lý do vì sao làm trước).
+   - Tóm tắt tiến độ, kiểm tra việc trễ: summarize_work.
+   - Tìm kiếm bằng ngôn ngữ tự nhiên: natural_search_tasks (như "mấy việc liên quan đến khách hàng tháng trước").
+   - Phân rã mục tiêu lớn theo tuần: breakdown_goal.
+   - Việc khẩn cấp, việc gấp 3 ngày tới: get_urgent_tasks.
+   - Dời việc tồn, dời việc chưa xong sang ngày mai: reschedule_overdue_tasks.
+   - Tra cứu chung: get_tasks, get_calendar_range, find_free_time, get_projects.
+   - Thao tác: create_task, update_task, schedule_task, complete_task, delete_task, create_project, delete_project.
+6. QUY TẮC CHỐNG TRÙNG LẶP: Không gọi lại create_task cho các việc đã có sẵn trong lịch sử trò chuyện.
+7. GIẢI THÍCH RÕ RÀNG: Luôn kèm lý do logic ngắn gọn khi gợi ý thứ tự làm việc (dựa vào Deadline, Priority HIGH, hoặc thời lượng 15-30 phút).
 `.trim();
 
     // 1. If there is a confirmed tool call (e.g. from confirmation dialog)
@@ -496,6 +498,145 @@ Nhiệm vụ của bạn:
           result: {
             project: newProj,
             summary: `✨ Đã tạo dự án mới: **${newProj.name}**`,
+          },
+        };
+      }
+
+      case 'suggest_daily_priorities': {
+        const energy = args.energyPreference || 'BALANCED';
+        const prioritized = await PriorityService.suggestDailyPriorities(args.date, energy);
+        let summary = `🎯 **Gợi ý công việc nên làm trước (Chiến lược: ${energy}):**\n\n`;
+        if (prioritized.length === 0) {
+          summary += `✨ Tuyệt vời! Hiện tại bạn không có công việc tồn đọng nào cần xử lý.`;
+        } else {
+          const topList = prioritized.slice(0, 5);
+          summary += topList
+            .map((item, idx) => {
+              const diffText = item.task.difficulty ? `[Độ khó: ${item.task.difficulty}]` : '';
+              const estText = item.task.estimatedMinutes ? `(~${item.task.estimatedMinutes}p)` : '';
+              return `**${idx + 1}. ${item.badge} ${item.task.title}** ${diffText} ${estText}\n   *Lý do:* ${item.reason}`;
+            })
+            .join('\n\n');
+          if (prioritized.length > 5) {
+            summary += `\n\n*(... và ${prioritized.length - 5} công việc khác có độ ưu tiên thấp hơn)*`;
+          }
+        }
+        return { name, result: { prioritized, summary } };
+      }
+
+      case 'summarize_work': {
+        const timeFrame = args.timeFrame || 'this_week';
+        const report = await AnalyticsService.getWorkSummary(timeFrame);
+        let summary = `📊 **Báo cáo tiến độ: ${report.timeFrame}**\n\n`;
+        summary += `• ✅ **Đã hoàn thành:** ${report.completedCount} việc (${report.completionRatePercent}% tỷ lệ hoàn thành)\n`;
+        summary += `• ⏳ **Còn dở dang/chưa xong:** ${report.pendingCount} việc\n`;
+        summary += `• ⚠️ **Bị trễ hạn (Overdue):** ${report.overdueCount} việc\n\n`;
+
+        if (report.overdueTasks.length > 0) {
+          summary += `🚨 **Các việc trễ hạn cần chú ý gấp:**\n`;
+          summary += report.overdueTasks
+            .slice(0, 4)
+            .map(t => `- **${t.title}** (Hạn chót: ${t.dueDate || 'Hôm qua'})`)
+            .join('\n');
+          summary += `\n\n💡 Bạn có thể nói *"Dời các việc trễ sang ngày mai"* để tôi xếp lại lịch giúp bạn!\n\n`;
+        }
+
+        if (report.completedTasks.length > 0) {
+          summary += `🎉 **Một số việc nổi bật bạn đã hoàn thành:**\n`;
+          summary += report.completedTasks
+            .slice(0, 3)
+            .map(t => `- [x] **${t.title}**`)
+            .join('\n');
+        }
+
+        return { name, result: { report, summary } };
+      }
+
+      case 'natural_search_tasks': {
+        const res = await NaturalSearchService.search(args.query || '');
+        let summary = res.summary + '\n';
+        if (res.tasks.length > 0) {
+          summary += res.tasks
+            .slice(0, 5)
+            .map(t => `- [${t.status === 'DONE' ? 'x' : ' '}] **${t.title}** (${t.priority}) ${t.startDate ? `[${t.startDate}]` : ''}`)
+            .join('\n');
+          if (res.tasks.length > 5) summary += `\n... và ${res.tasks.length - 5} việc khác.`;
+        }
+        return { name, result: { tasks: res.tasks, summary } };
+      }
+
+      case 'breakdown_goal': {
+        const goalTitle = args.goalTitle || 'Mục tiêu mới';
+        const duration = args.durationMonths || 6;
+        const hours = args.hoursPerWeek || 5;
+        const plan = await GoalService.planGoalDecomposition(goalTitle, duration, hours);
+        const committed = await GoalService.commitGoalRoadmap(plan);
+
+        let summary = `🚀 **Đã thiết lập mục tiêu: "${goalTitle}"**\n\n`;
+        summary += `• Thời hạn: **${duration} tháng** (~${hours} giờ/tuần)\n`;
+        summary += `• Đã tạo dự án mới: **${committed.project.name}**\n`;
+        summary += `• Đã phân rã và khởi tạo: **${committed.taskCount} công việc** chia theo từng tuần.\n\n`;
+        summary += `📋 **Lộ trình các mốc tiêu biểu:**\n`;
+        summary += plan.milestones
+          .slice(0, 4)
+          .map(m => `• **${m.title}**: ${m.tasks.length} task (vd: *${m.tasks[0]?.title || ''}*)`)
+          .join('\n');
+
+        return { name, result: { plan, committed, summary } };
+      }
+
+      case 'get_urgent_tasks': {
+        const days = args.days || 3;
+        const tasks = await TaskService.getUrgentTasks(days);
+        let summary = `🔥 **Công việc khẩn cấp (Hạn trong ${days} ngày hoặc ưu tiên HIGH):**\n\n`;
+        if (tasks.length === 0) {
+          summary += `✨ Không có công việc nào khẩn cấp trong ${days} ngày tới. Bạn đang kiểm soát tiến độ rất tốt!`;
+        } else {
+          summary += tasks
+            .slice(0, 6)
+            .map(t => {
+              const due = t.dueDate ? `[Hạn: ${t.dueDate}]` : '[Chưa đặt hạn]';
+              return `• **${t.title}** (${t.priority}) — ${due}`;
+            })
+            .join('\n');
+          if (tasks.length > 6) summary += `\n... và ${tasks.length - 6} việc khác.`;
+        }
+        return { name, result: { tasks, summary } };
+      }
+
+      case 'reschedule_overdue_tasks': {
+        const targetDate = args.targetDate || (() => {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          return tomorrow.toISOString().split('T')[0];
+        })();
+        const startTime = args.startTime || '09:00';
+
+        // Lấy tất cả việc trễ hạn hoặc việc hôm nay chưa xong
+        const todayStr = new Date().toISOString().split('T')[0];
+        const overdue = await TaskService.getOverdueTasks(todayStr);
+        const todayPending = await TaskService.getAll({
+          startDate: todayStr,
+          status: 'TODO',
+        });
+
+        const toReschedule = Array.from(new Set([...overdue.map(t => t.id), ...todayPending.map(t => t.id)]));
+
+        if (toReschedule.length === 0) {
+          return {
+            name,
+            result: {
+              summary: `✨ Không có công việc tồn đọng nào cần dời lịch. Tất cả đều đã xong hoặc đúng tiến độ!`,
+            },
+          };
+        }
+
+        const count = await TaskService.batchReschedule(toReschedule, targetDate, startTime);
+        return {
+          name,
+          result: {
+            rescheduledCount: count,
+            summary: `🗓️ **Đã dời ${count} công việc tồn đọng** sang ngày **${targetDate}** lúc **${startTime}**. Bạn có thể yên tâm nghỉ ngơi hôm nay!`,
           },
         };
       }

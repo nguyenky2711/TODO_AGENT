@@ -9,6 +9,9 @@ import { ProjectModal } from './components/projects/ProjectModal';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { CommandPalette } from './components/command/CommandPalette';
 import { NotificationBanner } from './components/notifications/NotificationBanner';
+import { UserGuideModal } from './components/guide/UserGuideModal';
+import { DailyBriefingModal } from './components/briefing/DailyBriefingModal';
+import { GoalBreakdownModal } from './components/goals/GoalBreakdownModal';
 import { getDatabase } from './db/sqlite';
 import { seedInitialDataIfNeeded } from './db/seed';
 import { TaskService } from './services/task.service';
@@ -37,6 +40,10 @@ export const App: React.FC = () => {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
+  const [isBriefingOpen, setIsBriefingOpen] = useState(false);
+  const [briefingMode, setBriefingMode] = useState<'morning' | 'evening'>('morning');
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -70,6 +77,16 @@ export const App: React.FC = () => {
         await seedInitialDataIfNeeded();
         await loadData();
         NotificationService.init();
+
+        // Check Daily Morning Briefing auto-trigger on first morning open
+        const todayDateStr = new Date().toISOString().split('T')[0];
+        const lastBriefing = localStorage.getItem('last_briefing_date');
+        const hour = new Date().getHours();
+        if (lastBriefing !== todayDateStr && hour < 12) {
+          setBriefingMode('morning');
+          setIsBriefingOpen(true);
+          localStorage.setItem('last_briefing_date', todayDateStr);
+        }
       } catch (err) {
         console.error('Error during app initialization:', err);
       } finally {
@@ -80,7 +97,7 @@ export const App: React.FC = () => {
     initApp();
   }, [loadData]);
 
-  // Global Keyboard Shortcuts (Ctrl+K, Ctrl+N, Ctrl+J, Ctrl+1/2/3, Esc)
+  // Global Keyboard Shortcuts (Ctrl+K, Ctrl+N, Ctrl+J, Ctrl+1/2/3, F1, Esc)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if user is typing inside input or textarea
@@ -99,6 +116,9 @@ export const App: React.FC = () => {
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') {
         e.preventDefault();
         setIsAgentOpen((prev) => !prev);
+      } else if (e.key === 'F1') {
+        e.preventDefault();
+        setIsUserGuideOpen((prev) => !prev);
       } else if (!isInput && (e.ctrlKey || e.metaKey) && e.key === '1') {
         e.preventDefault();
         setViewMode('day');
@@ -113,6 +133,9 @@ export const App: React.FC = () => {
         setIsProjectModalOpen(false);
         setIsSettingsOpen(false);
         setIsCommandPaletteOpen(false);
+        setIsUserGuideOpen(false);
+        setIsBriefingOpen(false);
+        setIsGoalModalOpen(false);
       }
     };
 
@@ -216,6 +239,12 @@ export const App: React.FC = () => {
         onToggleAgent={() => setIsAgentOpen((prev) => !prev)}
         isAgentOpen={isAgentOpen}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenBriefing={(mode) => {
+          setBriefingMode(mode);
+          setIsBriefingOpen(true);
+        }}
+        onOpenGoalBreakdown={() => setIsGoalModalOpen(true)}
+        onOpenUserGuide={() => setIsUserGuideOpen(true)}
       />
 
       {/* Main Workspace: 3 Columns */}
@@ -267,6 +296,7 @@ export const App: React.FC = () => {
           isOpen={isAgentOpen}
           onClose={() => setIsAgentOpen(false)}
           onDataMutated={loadData}
+          onOpenGuide={() => setIsUserGuideOpen(true)}
         />
       </div>
 
@@ -316,6 +346,33 @@ export const App: React.FC = () => {
           setEditingTask(task);
           setIsTaskModalOpen(true);
         }}
+        onOpenBriefing={(mode) => {
+          setBriefingMode(mode);
+          setIsBriefingOpen(true);
+        }}
+        onOpenGoalBreakdown={() => setIsGoalModalOpen(true)}
+        onOpenUserGuide={() => setIsUserGuideOpen(true)}
+      />
+
+      <UserGuideModal
+        isOpen={isUserGuideOpen}
+        onClose={() => setIsUserGuideOpen(false)}
+        onUsePrompt={(_prompt) => {
+          setIsAgentOpen(true);
+        }}
+      />
+
+      <DailyBriefingModal
+        isOpen={isBriefingOpen}
+        mode={briefingMode}
+        onClose={() => setIsBriefingOpen(false)}
+        onDataMutated={loadData}
+      />
+
+      <GoalBreakdownModal
+        isOpen={isGoalModalOpen}
+        onClose={() => setIsGoalModalOpen(false)}
+        onDataMutated={loadData}
       />
 
       <NotificationBanner onDataMutated={loadData} />

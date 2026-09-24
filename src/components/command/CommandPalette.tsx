@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Plus, Calendar, Sparkles, Sun, Moon, Zap, Settings, CheckSquare, Folder, ArrowRight } from 'lucide-react';
+import { Search, Plus, Calendar, Sparkles, Sun, Moon, Zap, Settings, CheckSquare, Folder, ArrowRight, BookOpen, Target } from 'lucide-react';
 import { Task, Project, ThemeMode, CalendarViewMode } from '../../types';
 import { cn } from '../../lib/utils';
 
@@ -14,6 +14,9 @@ interface CommandPaletteProps {
   onThemeChange: (theme: ThemeMode) => void;
   onOpenSettings: () => void;
   onSelectTask: (task: Task) => void;
+  onOpenBriefing?: (mode: 'morning' | 'evening') => void;
+  onOpenGoalBreakdown?: () => void;
+  onOpenUserGuide?: () => void;
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
@@ -27,6 +30,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onThemeChange,
   onOpenSettings,
   onSelectTask,
+  onOpenBriefing,
+  onOpenGoalBreakdown,
+  onOpenUserGuide,
 }) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -51,6 +57,35 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       icon: <Plus className="w-4 h-4 text-primary" />,
       shortcut: 'Ctrl+N',
       run: () => { onClose(); onOpenTaskModal(); },
+    },
+    {
+      id: 'act-guide',
+      label: 'Xem Cẩm nang hướng dẫn sử dụng ứng dụng',
+      category: 'Hành động nhanh',
+      icon: <BookOpen className="w-4 h-4 text-primary" />,
+      shortcut: 'F1',
+      run: () => { onClose(); onOpenUserGuide?.(); },
+    },
+    {
+      id: 'act-morning-briefing',
+      label: 'Bản tin chào buổi sáng (Top 3 Tiêu điểm)',
+      category: 'Trợ lý AI',
+      icon: <Sun className="w-4 h-4 text-amber-500" />,
+      run: () => { onClose(); onOpenBriefing?.('morning'); },
+    },
+    {
+      id: 'act-evening-review',
+      label: 'Tổng kết ngày & Dời việc tồn đọng (1-Click)',
+      category: 'Trợ lý AI',
+      icon: <Moon className="w-4 h-4 text-indigo-400" />,
+      run: () => { onClose(); onOpenBriefing?.('evening'); },
+    },
+    {
+      id: 'act-goal-breakdown',
+      label: 'Quản lý & Phân rã mục tiêu dài hạn theo tuần',
+      category: 'Trợ lý AI',
+      icon: <Target className="w-4 h-4 text-neon-purple" />,
+      run: () => { onClose(); onOpenGoalBreakdown?.(); },
     },
     {
       id: 'act-agent',

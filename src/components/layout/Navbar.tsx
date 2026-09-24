@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, CheckSquare, Sparkles, Command, Sun, Moon, Zap, Settings, Plus } from 'lucide-react';
+import { Calendar, CheckSquare, Sparkles, Command, Sun, Moon, Zap, Settings, Plus, BookOpen, Target, Coffee } from 'lucide-react';
 import { CalendarViewMode, ThemeMode } from '../../types';
 import { cn } from '../../lib/utils';
 
@@ -13,6 +13,9 @@ interface NavbarProps {
   onToggleAgent: () => void;
   isAgentOpen: boolean;
   onOpenSettings: () => void;
+  onOpenBriefing: (mode: 'morning' | 'evening') => void;
+  onOpenGoalBreakdown: () => void;
+  onOpenUserGuide: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -25,6 +28,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleAgent,
   isAgentOpen,
   onOpenSettings,
+  onOpenBriefing,
+  onOpenGoalBreakdown,
+  onOpenUserGuide,
 }) => {
   const themes: { id: ThemeMode; label: string; icon: React.ReactNode }[] = [
     { id: 'light', label: 'Light', icon: <Sun className="w-3.5 h-3.5" /> },
@@ -103,6 +109,48 @@ export const Navbar: React.FC<NavbarProps> = ({
           <kbd className="hidden md:inline px-1.5 py-0.5 text-[10px] bg-background border border-border rounded font-mono">
             ⌘K
           </kbd>
+        </button>
+
+        {/* Daily Briefing / Evening Review */}
+        <button
+          onClick={() => {
+            const hour = new Date().getHours();
+            onOpenBriefing(hour >= 17 ? 'evening' : 'morning');
+          }}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 text-foreground rounded-lg border border-border transition-all"
+          title="Bản tin sáng / Tổng kết ngày"
+        >
+          {new Date().getHours() >= 17 ? (
+            <>
+              <Moon className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="hidden lg:inline">Tổng kết ngày</span>
+            </>
+          ) : (
+            <>
+              <Sun className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden lg:inline">Bản tin sáng</span>
+            </>
+          )}
+        </button>
+
+        {/* AI Goal Breakdown */}
+        <button
+          onClick={onOpenGoalBreakdown}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 text-foreground rounded-lg border border-border transition-all"
+          title="Phân rã mục tiêu lớn bằng AI"
+        >
+          <Target className="w-3.5 h-3.5 text-neon-purple" />
+          <span className="hidden lg:inline">Mục tiêu</span>
+        </button>
+
+        {/* User Guide Modal Button */}
+        <button
+          onClick={onOpenUserGuide}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 text-foreground rounded-lg border border-border transition-all"
+          title="Cẩm nang hướng dẫn sử dụng (F1)"
+        >
+          <BookOpen className="w-3.5 h-3.5 text-primary" />
+          <span className="hidden xl:inline">Hướng dẫn</span>
         </button>
 
         {/* Quick Add Task */}

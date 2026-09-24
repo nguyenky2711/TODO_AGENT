@@ -368,7 +368,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               ) : (
                 unscheduledTasks.map((task) => {
                   const isSelected = selectedTaskIds.has(task.id);
-
+                  const isMultiSelecting = isMultiSelectMode || selectedTaskIds.size > 0;
                   const taskColor = task.color || task.project?.color;
 
                   return (
@@ -377,7 +377,18 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                       draggable
                       onDragStart={(e) => handleDragStart(e, task)}
                       onDragEnd={handleDragEnd}
-                      onClick={() => onEditTask(task)}
+                      onClick={(e) => {
+                        // In multi-select mode, clicking the card toggles selection instead of opening edit modal
+                        if (isMultiSelecting) {
+                          toggleSelectTask(e, task.id);
+                        }
+                      }}
+                      onDoubleClick={(e) => {
+                        if (!isMultiSelecting) {
+                          e.stopPropagation();
+                          onEditTask(task);
+                        }
+                      }}
                       style={
                         taskColor
                           ? {
@@ -387,7 +398,10 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                           : undefined
                       }
                       className={cn(
-                        'group flex items-start gap-2 p-2 rounded-lg border cursor-grab active:cursor-grabbing transition-all hover:shadow-xs select-none',
+                        'group flex items-start gap-2 p-2 rounded-lg border transition-all hover:shadow-xs select-none relative',
+                        isMultiSelecting
+                          ? 'cursor-pointer'
+                          : 'cursor-grab active:cursor-grabbing',
                         isSelected
                           ? 'bg-primary/20 border-primary/60 shadow-xs'
                           : taskColor
@@ -395,43 +409,78 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                           : 'bg-secondary/50 hover:bg-secondary border-border hover:border-primary/40'
                       )}
                     >
-                      {/* Checkbox for Multi-select */}
-                      {(isMultiSelectMode || selectedTaskIds.size > 0) ? (
+                      {/* Left Action Area: Selection & Completion (isolated from card click) */}
+                      <div 
+                        className="flex items-center gap-1 shrink-0 mt-0.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Checkbox for Multi-select or Drag handle */}
+                        {isMultiSelecting ? (
+                          <button
+                            type="button"
+                            onClick={(e) => toggleSelectTask(e, task.id)}
+                            className="p-1 -m-1 rounded hover:bg-secondary/80 text-primary transition-colors shrink-0"
+                            title={isSelected ? 'Bỏ chọn việc này' : 'Chọn việc này'}
+                          >
+                            {isSelected ? (
+                              <CheckSquare className="w-4 h-4 fill-primary text-primary-foreground" />
+                            ) : (
+                              <Square className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                            )}
+                          </button>
+                        ) : (
+                          <div 
+                            className="p-1 -m-1 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0 cursor-grab"
+                            title="Kéo thả vào Lịch để xếp giờ hoặc kéo vào Thùng rác để xóa"
+                          >
+                            <GripVertical className="w-3.5 h-3.5" />
+                          </div>
+                        )}
+
+                        {/* Complete status checkbox */}
                         <button
-                          onClick={(e) => toggleSelectTask(e, task.id)}
-                          className="mt-0.5 text-primary transition-colors shrink-0"
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCompleteTask(task.id, task.status !== 'DONE');
+                          }}
+                          className="p-1 -m-1 rounded hover:bg-secondary/80 text-muted-foreground hover:text-primary transition-colors shrink-0"
+                          title={task.status === 'DONE' ? 'Đánh dấu chưa xong' : 'Đánh dấu hoàn thành'}
                         >
-                          {isSelected ? (
-                            <CheckSquare className="w-4 h-4 fill-primary text-primary-foreground" />
+                          {task.status === 'DONE' ? (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
                           ) : (
-                            <Square className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                            <Circle className="w-3.5 h-3.5" />
                           )}
                         </button>
-                      ) : (
-                        <div className="mt-0.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0">
-                          <GripVertical className="w-3.5 h-3.5" />
-                        </div>
-                      )}
+                      </div>
 
-                      {/* Complete status checkbox */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onCompleteTask(task.id, task.status !== 'DONE');
-                        }}
-                        className="mt-0.5 text-muted-foreground hover:text-primary transition-colors shrink-0"
-                      >
-                        {task.status === 'DONE' ? (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
-                        ) : (
-                          <Circle className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-
+                      {/* Content Area: Click title to open detail modal */}
                       <div className="flex-1 min-w-0">
-                        <p className={cn('text-xs font-medium truncate', isSelected ? 'text-primary font-semibold' : 'text-foreground')}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isMultiSelecting) {
+                              toggleSelectTask(e, task.id);
+                            } else {
+                              onEditTask(task);
+                            }
+                          }}
+                          className={cn(
+                            'text-left font-medium text-xs truncate block w-full transition-colors cursor-pointer',
+                            isSelected
+                              ? 'text-primary font-semibold'
+                              : 'text-foreground hover:text-primary hover:underline'
+                          )}
+                          title={
+                            isMultiSelecting
+                              ? 'Bấm để chọn / bỏ chọn'
+                              : 'Bấm để xem & sửa chi tiết công việc'
+                          }
+                        >
                           {task.title}
-                        </p>
+                        </button>
                         <div className="flex items-center gap-1.5 mt-1">
                           <span className={cn('text-[9px] font-semibold px-1 py-0.2 rounded border', getPriorityBadgeColor(task.priority))}>
                             {task.priority}
@@ -444,18 +493,36 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                         </div>
                       </div>
 
-                      {/* Checkbox trigger on hover if not in multi-select mode */}
-                      {!isMultiSelectMode && selectedTaskIds.size === 0 && (
-                        <button
-                          onClick={(e) => {
-                            setIsMultiSelectMode(true);
-                            toggleSelectTask(e, task.id);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 p-0.5 text-muted-foreground hover:text-primary rounded transition-opacity"
-                          title="Chọn để thao tác hàng loạt"
+                      {/* Hover Action buttons when not in multi-select mode */}
+                      {!isMultiSelecting && (
+                        <div 
+                          className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <Square className="w-3 h-3" />
-                        </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditTask(task);
+                            }}
+                            className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-primary transition-colors"
+                            title="Xem chi tiết / Sửa việc này"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsMultiSelectMode(true);
+                              toggleSelectTask(e, task.id);
+                            }}
+                            className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-primary transition-colors"
+                            title="Chọn nhiều việc"
+                          >
+                            <Square className="w-3 h-3" />
+                          </button>
+                        </div>
                       )}
                     </div>
                   );

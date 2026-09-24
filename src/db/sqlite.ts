@@ -79,12 +79,15 @@ CREATE TABLE IF NOT EXISTS tasks (
   title TEXT NOT NULL,
   description TEXT,
   project_id TEXT,
+  milestone_id TEXT,
   start_date TEXT,
   start_time TEXT,
   end_date TEXT,
   end_time TEXT,
   due_date TEXT,
   priority TEXT DEFAULT 'MEDIUM',
+  difficulty TEXT DEFAULT 'MEDIUM',
+  estimated_minutes INTEGER DEFAULT 30,
   status TEXT DEFAULT 'TODO',
   color TEXT,
   reminder_minutes INTEGER DEFAULT 10,
@@ -92,7 +95,20 @@ CREATE TABLE IF NOT EXISTS tasks (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   completed_at TEXT,
-  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL
+  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL,
+  FOREIGN KEY (milestone_id) REFERENCES project_milestones(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS project_milestones (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  target_week_number INTEGER,
+  due_date TEXT,
+  status TEXT DEFAULT 'PENDING',
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS tags (
@@ -195,9 +211,16 @@ export async function getDatabase(): Promise<Database> {
     db.run(SCHEMA_SQL);
     try {
       db.run("ALTER TABLE tasks ADD COLUMN color TEXT;");
-    } catch (e) {
-      // Column already exists, safe to ignore
-    }
+    } catch (e) {}
+    try {
+      db.run("ALTER TABLE tasks ADD COLUMN difficulty TEXT DEFAULT 'MEDIUM';");
+    } catch (e) {}
+    try {
+      db.run("ALTER TABLE tasks ADD COLUMN estimated_minutes INTEGER DEFAULT 30;");
+    } catch (e) {}
+    try {
+      db.run("ALTER TABLE tasks ADD COLUMN milestone_id TEXT;");
+    } catch (e) {}
     try {
       db.run(`CREATE TABLE IF NOT EXISTS task_notes (
         id TEXT PRIMARY KEY,
@@ -206,6 +229,19 @@ export async function getDatabase(): Promise<Database> {
         task_status TEXT NOT NULL,
         created_at TEXT NOT NULL,
         FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+      );`);
+    } catch (e) {}
+    try {
+      db.run(`CREATE TABLE IF NOT EXISTS project_milestones (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        target_week_number INTEGER,
+        due_date TEXT,
+        status TEXT DEFAULT 'PENDING',
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
       );`);
     } catch (e) {}
     dbInstance = db;

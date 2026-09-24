@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, Tag, Trash2, Sparkles, AlertCircle, StickyNote } from 'lucide-react';
-import { Task, Project, Priority, TaskStatus, TaskNote } from '../../types';
+import { Task, Project, Priority, Difficulty, TaskStatus, TaskNote } from '../../types';
 import { NoteService } from '../../services/note.service';
 import { cn } from '../../lib/utils';
 
@@ -47,6 +47,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [endTime, setEndTime] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState<Priority>('MEDIUM');
+  const [difficulty, setDifficulty] = useState<Difficulty>('MEDIUM');
+  const [estimatedMinutes, setEstimatedMinutes] = useState<number>(30);
   const [status, setStatus] = useState<TaskStatus>('TODO');
   const [reminderMinutes, setReminderMinutes] = useState(10);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,6 +70,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setEndTime(task.endTime || '');
       setDueDate(task.dueDate || '');
       setPriority(task.priority);
+      setDifficulty(task.difficulty || 'MEDIUM');
+      setEstimatedMinutes(task.estimatedMinutes ?? 30);
       setStatus(task.status);
       setReminderMinutes(task.reminderMinutesBefore ?? 10);
       NoteService.getByTaskId(task.id).then(setNotes);
@@ -86,6 +90,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       }
       setDueDate('');
       setPriority('MEDIUM');
+      setDifficulty('MEDIUM');
+      setEstimatedMinutes(30);
       setStatus('TODO');
       setReminderMinutes(10);
       setNaturalInput('');
@@ -121,13 +127,19 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setStartDate(now.toISOString().split('T')[0]);
     }
 
-    // Clean title
-    const cleanTitle = naturalInput
-      .replace(/mai|hôm nay|tối|chiều|sáng|lúc|\d{1,2}[:h]\d{2}|\d{1,2}\s*(giờ|g)|phút/gi, '')
-      .trim();
-    if (cleanTitle) {
-      setTitle(cleanTitle);
+    // Find priority
+    if (text.includes('gấp') || text.includes('quan trọng') || text.includes('cao')) {
+      setPriority('HIGH');
     }
+
+    // Clean title
+    let clean = naturalInput
+      .replace(/lúc\s*\d{1,2}[:h](\d{2})?/gi, '')
+      .replace(/(\d{1,2})\s*(giờ|g)/gi, '')
+      .replace(/hôm nay|ngày mai|tối nay|chiều nay/gi, '')
+      .replace(/ưu tiên cao|gấp|quan trọng/gi, '')
+      .trim();
+    if (clean) setTitle(clean);
   };
 
   const handleAddNote = async (e: React.FormEvent) => {
@@ -165,6 +177,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         endTime: endTime || undefined,
         dueDate: dueDate || undefined,
         priority,
+        difficulty,
+        estimatedMinutes,
         status,
         color: color || undefined,
         reminderMinutesBefore: reminderMinutes,
@@ -288,6 +302,42 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 <option value="LOW">Thấp (LOW)</option>
                 <option value="MEDIUM">Vừa (MEDIUM)</option>
                 <option value="HIGH">Cao (HIGH)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Difficulty & Estimated Duration */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="font-semibold text-foreground block mb-1">
+                Độ khó (Tư duy)
+              </label>
+              <select
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value as Difficulty)}
+                className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-foreground focus:ring-1 focus:ring-primary focus:outline-none"
+              >
+                <option value="EASY">Dễ (Ít tốn não / Việc nhẹ)</option>
+                <option value="MEDIUM">Vừa (Tiêu chuẩn)</option>
+                <option value="HARD">Khó (Tập trung sâu / Thách thức)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="font-semibold text-foreground block mb-1">
+                Thời lượng ước tính
+              </label>
+              <select
+                value={estimatedMinutes}
+                onChange={(e) => setEstimatedMinutes(Number(e.target.value))}
+                className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-foreground focus:ring-1 focus:ring-primary focus:outline-none"
+              >
+                <option value={15}>15 phút (⚡ Quick Win)</option>
+                <option value={30}>30 phút</option>
+                <option value={45}>45 phút</option>
+                <option value={60}>60 phút (1 giờ)</option>
+                <option value={90}>90 phút (1.5 giờ)</option>
+                <option value={120}>120 phút (2 giờ)</option>
               </select>
             </div>
           </div>

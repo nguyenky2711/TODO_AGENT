@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, X, Send, RotateCcw, AlertTriangle, Check, Loader2, Bot, User } from 'lucide-react';
+import { Sparkles, X, Send, RotateCcw, AlertTriangle, Check, Loader2, Bot, User, BookOpen } from 'lucide-react';
 import { ChatMessage, ToolCall } from '../../ai/types';
 import { AgentExecutor } from '../../ai/agent-executor';
 import { AuditService } from '../../services/audit.service';
@@ -9,12 +9,14 @@ interface AgentDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onDataMutated: () => void;
+  onOpenGuide?: () => void;
 }
 
 export const AgentDrawer: React.FC<AgentDrawerProps> = ({
   isOpen,
   onClose,
   onDataMutated,
+  onOpenGuide,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -147,13 +149,25 @@ Hãy hỏi tôi bất kỳ điều gì!`,
           </div>
         </div>
 
-        <button
-          onClick={onClose}
-          className="p-1 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
-          title="Đóng (Esc / Ctrl + J)"
-        >
-          <X className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          {onOpenGuide && (
+            <button
+              onClick={onOpenGuide}
+              className="p-1 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors flex items-center gap-1 text-[10px]"
+              title="Xem Cẩm Nang Sử Dụng (F1)"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Cẩm nang</span>
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="p-1 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
+            title="Đóng (Esc / Ctrl + J)"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Suggestion Chips */}
@@ -276,6 +290,34 @@ Hãy hỏi tôi bất kỳ điều gì!`,
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Quick Suggestion Chips */}
+      <div className="px-3 pt-2 pb-1 border-t border-border/40 bg-secondary/20 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+        <button
+          onClick={() => handleSendMessage('Hôm nay tôi nên làm gì trước?')}
+          className="whitespace-nowrap px-2 py-1 text-[11px] font-medium rounded-lg bg-card hover:bg-secondary text-foreground border border-border/60 flex items-center gap-1 transition-all"
+        >
+          <span>🎯 Gợi ý ưu tiên</span>
+        </button>
+        <button
+          onClick={() => handleSendMessage('Tuần này tôi đã làm được gì?')}
+          className="whitespace-nowrap px-2 py-1 text-[11px] font-medium rounded-lg bg-card hover:bg-secondary text-foreground border border-border/60 flex items-center gap-1 transition-all"
+        >
+          <span>📊 Tóm tắt tuần</span>
+        </button>
+        <button
+          onClick={() => handleSendMessage('Tôi có việc gì gấp trong 3 ngày tới?')}
+          className="whitespace-nowrap px-2 py-1 text-[11px] font-medium rounded-lg bg-card hover:bg-secondary text-foreground border border-border/60 flex items-center gap-1 transition-all"
+        >
+          <span>🔥 Việc gấp 3 ngày</span>
+        </button>
+        <button
+          onClick={() => handleSendMessage('Dời các việc chưa xong hôm nay sang ngày mai lúc 9h')}
+          className="whitespace-nowrap px-2 py-1 text-[11px] font-medium rounded-lg bg-card hover:bg-secondary text-foreground border border-border/60 flex items-center gap-1 transition-all"
+        >
+          <span>🌙 Dời việc tồn</span>
+        </button>
+      </div>
+
       {/* Input Box */}
       <div className="p-3 border-t border-border bg-card/80">
         <form
@@ -289,7 +331,7 @@ Hãy hỏi tôi bất kỳ điều gì!`,
             type="text"
             value={inputPrompt}
             onChange={(e) => setInputPrompt(e.target.value)}
-            placeholder="Hỏi lịch, nhờ xếp việc, tìm slot trống..."
+            placeholder="Hỏi lịch, việc ưu tiên, tóm tắt tuần, tìm việc..."
             className="w-full pl-3 pr-10 py-2 text-xs rounded-xl bg-secondary border border-border focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground/60 transition-all"
           />
           <button

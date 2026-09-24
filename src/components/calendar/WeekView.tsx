@@ -218,7 +218,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
                                   e.stopPropagation();
                                   onCompleteTask(task.id, !isDone);
                                 }}
-                                className="shrink-0 text-muted-foreground/70 hover:text-primary transition-colors mt-0.5"
+                                className="shrink-0 p-1 -m-1 rounded-md hover:bg-card/80 text-muted-foreground/70 hover:text-primary transition-colors mt-0.5"
                                 title={isDone ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu hoàn thành'}
                               >
                                 <CheckCircle2
