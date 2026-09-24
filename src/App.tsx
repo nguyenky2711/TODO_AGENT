@@ -44,7 +44,7 @@ export const App: React.FC = () => {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(() => typeof window !== 'undefined' && window.location.search.includes('cmd=true'));
   const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
   const [isBriefingOpen, setIsBriefingOpen] = useState(false);
   const [briefingMode, setBriefingMode] = useState<'morning' | 'evening'>('morning');
@@ -166,13 +166,15 @@ export const App: React.FC = () => {
     await loadData();
   };
 
-  const handleSaveTask = async (data: Partial<Task>) => {
+  const handleSaveTask = async (data: Partial<Task>): Promise<Task> => {
+    let saved: Task;
     if (data.id) {
-      await TaskService.update(data.id, data);
+      saved = await TaskService.update(data.id, data);
     } else {
-      await TaskService.create(data);
+      saved = await TaskService.create(data);
     }
     await loadData();
+    return saved;
   };
 
   const handleDeleteTask = async (id: string) => {

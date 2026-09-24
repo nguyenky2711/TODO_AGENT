@@ -1,6 +1,5 @@
 import { query, run } from '../db/sqlite';
-import { Task, Priority, Difficulty, TaskStatus } from '../types';
-
+import type { Task, Priority, Difficulty, TaskStatus, Subtask } from '../types';
 export interface TaskFilter {
   status?: TaskStatus;
   projectId?: string;
@@ -55,7 +54,33 @@ export class TaskService {
 
     sql += ` ORDER BY t.start_time ASC, t.created_at DESC`;
 
-    const rows = await query<any>(sql, params);
+    let subtaskRows: any[] = [];
+    let rows: any[] = [];
+    try {
+      [rows, subtaskRows] = await Promise.all([
+        query<any>(sql, params),
+        query<any>(`SELECT * FROM subtasks ORDER BY created_at ASC`),
+      ]);
+    } catch (err) {
+      rows = await query<any>(sql, params);
+    }
+
+    const subtasksByTaskId = new Map<string, Subtask[]>();
+    for (const s of subtaskRows) {
+      const list = subtasksByTaskId.get(s.task_id) || [];
+      list.push({
+        id: s.id,
+        taskId: s.task_id,
+        title: s.title,
+        isCompleted: Boolean(s.is_completed),
+        startTime: s.start_time || s.time || undefined,
+        endTime: s.end_time || undefined,
+        priority: (s.priority || 'MEDIUM') as Priority,
+        createdAt: s.created_at,
+      });
+      subtasksByTaskId.set(s.task_id, list);
+    }
+
     return rows.map((r) => ({
       id: r.id,
       title: r.title,
@@ -84,6 +109,7 @@ export class TaskService {
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       completedAt: r.completed_at,
+      subtasks: subtasksByTaskId.get(r.id) || [],
     }));
   }
 
@@ -132,6 +158,7 @@ export class TaskService {
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       completedAt: r.completed_at,
+      subtasks: await this.getSubtasksByTaskId(r.id),
     };
   }
 
@@ -166,6 +193,10 @@ export class TaskService {
       now,
       now,
     ]);
+
+    if (data.subtasks && data.subtasks.length > 0) {
+      await this.syncSubtasks(id, data.subtasks);
+    }
 
     return (await this.getById(id))!;
   }
@@ -205,6 +236,9 @@ export class TaskService {
       endDate, endTime, dueDate, priority, difficulty, estimatedMinutes, status,
       color, reminderMinutes, repeatRule, now, completedAt, targetId
     ]);
+    if (data.subtasks !== undefined) {
+      await this.syncSubtasks(targetId, data.subtasks);
+    }
 
     return (await this.getById(targetId))!;
   }
@@ -212,6 +246,7 @@ export class TaskService {
   static async delete(idOrTitle: string): Promise<void> {
     const task = await this.getById(idOrTitle);
     const targetId = task ? task.id : idOrTitle;
+    await run(`DELETE FROM subtasks WHERE task_id = ?`, [targetId]);
     await run(`DELETE FROM task_tags WHERE task_id = ?`, [targetId]);
     await run(`DELETE FROM task_notes WHERE task_id = ?`, [targetId]);
     await run(`DELETE FROM tasks WHERE id = ?`, [targetId]);
@@ -243,6 +278,76 @@ export class TaskService {
       endDate: date,
       endTime: calculatedEndTime,
     });
+  }
+
+  // Subtasks CRUD
+  static async getSubtasksByTaskId(taskId: string): Promise<Subtask[]> {
+    try {
+      const rows = await query<any>(`SELECT * FROM subtasks WHERE task_id = ? ORDER BY created_at ASC`, [taskId]);
+      return rows.map((r) => ({
+        id: r.id,
+        taskId: r.task_id,
+        title: r.title,
+        isCompleted: Boolean(r.is_completed),
+        startTime: r.start_time || r.time || undefined,
+        endTime: r.end_time || undefined,
+        priority: (r.priority || 'MEDIUM') as Priority,
+        createdAt: r.created_at,
+      }));
+    } catch (err) {
+      console.warn('getSubtasksByTaskId error:', err);
+      return [];
+    }
+  }
+
+  static async addSubtask(taskId: string, title: string, startTime?: string, endTime?: string, priority: Priority = 'MEDIUM'): Promise<Subtask> {
+    const id = `sub-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const now = new Date().toISOString();
+    await run(`INSERT INTO subtasks (id, task_id, title, is_completed, start_time, end_time, priority, created_at) VALUES (?, ?, ?, 0, ?, ?, ?, ?)`, [
+      id,
+      taskId,
+      title.trim(),
+      startTime || null,
+      endTime || null,
+      priority,
+      now,
+    ]);
+    return { id, taskId, title: title.trim(), isCompleted: false, startTime: startTime || undefined, endTime: endTime || undefined, priority, createdAt: now };
+  }
+
+  static async toggleSubtask(id: string, isCompleted: boolean): Promise<void> {
+    await run(`UPDATE subtasks SET is_completed = ? WHERE id = ?`, [isCompleted ? 1 : 0, id]);
+  }
+
+  static async deleteSubtask(id: string): Promise<void> {
+    await run(`DELETE FROM subtasks WHERE id = ?`, [id]);
+  }
+
+  static async syncSubtasks(taskId: string, subtasks: { id?: string; title: string; isCompleted: boolean; startTime?: string; endTime?: string; priority?: Priority }[]): Promise<void> {
+    const existing = await this.getSubtasksByTaskId(taskId);
+    const incomingIds = new Set(subtasks.filter((s) => s.id).map((s) => s.id));
+
+    for (const ex of existing) {
+      if (!incomingIds.has(ex.id)) {
+        await this.deleteSubtask(ex.id);
+      }
+    }
+
+    for (const s of subtasks) {
+      if (!s.title.trim()) continue;
+      if (s.id && existing.some((e) => e.id === s.id)) {
+        await run(`UPDATE subtasks SET title = ?, is_completed = ?, start_time = ?, end_time = ?, priority = ? WHERE id = ?`, [
+          s.title.trim(),
+          s.isCompleted ? 1 : 0,
+          s.startTime || null,
+          s.endTime || null,
+          s.priority || 'MEDIUM',
+          s.id,
+        ]);
+      } else {
+        await this.addSubtask(taskId, s.title, s.startTime, s.endTime, s.priority);
+      }
+    }
   }
 
   // Get tasks whose due_date is before today and not DONE

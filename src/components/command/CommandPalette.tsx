@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Plus, Calendar, Sparkles, Sun, Moon, Zap, Settings, CheckSquare, Folder, ArrowRight, BookOpen, Target } from 'lucide-react';
+import { Search, Plus, Calendar, Sparkles, Sun, Moon, Zap, Settings, CheckSquare, Folder, ArrowRight, BookOpen, Target, X } from 'lucide-react';
 import { Task, Project, ThemeMode, CalendarViewMode } from '../../types';
 import { cn } from '../../lib/utils';
 
@@ -206,8 +206,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-20 bg-black/30 backdrop-blur-xs p-3 sm:p-4 select-none">
-      <div className="w-full max-w-lg rounded-2xl bg-card border border-border shadow-2xl overflow-hidden flex flex-col max-h-[70vh]">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-20 bg-black/25 backdrop-blur-xs p-3 sm:p-4 select-none animate-in fade-in duration-150"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-lg rounded-2xl bg-card border border-border shadow-glass overflow-hidden flex flex-col max-h-[70vh] animate-in zoom-in-95 duration-150"
+      >
         {/* Search Header */}
         <div className="p-3 border-b border-border flex items-center gap-2.5 bg-card">
           <Search className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -221,13 +227,23 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             }}
             onKeyDown={handleKeyDown}
             placeholder="Tìm kiếm công việc, dự án hoặc lệnh..."
-            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
+            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none min-w-0"
           />
-          <kbd className="px-1.5 py-0.5 text-[10px] bg-secondary border border-border rounded font-mono text-muted-foreground">
-            ESC
-          </kbd>
+          {/* Close button for touch & ESC for desktop */}
+          <div className="flex items-center gap-1 shrink-0">
+            <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] bg-secondary border border-border rounded font-mono text-muted-foreground">
+              ESC
+            </kbd>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              title="Đóng (Esc)"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-
         {/* Results List */}
         <div className="p-2 overflow-y-auto space-y-1">
           {allItems.length === 0 ? (

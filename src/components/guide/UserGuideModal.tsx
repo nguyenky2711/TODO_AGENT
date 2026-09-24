@@ -274,9 +274,14 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-black/30 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-5xl h-[90vh] bg-card text-foreground rounded-2xl border border-border shadow-2xl flex flex-col overflow-hidden">
-        {/* Modal Header */}
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-black/25 backdrop-blur-xs animate-in fade-in duration-150"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-5xl h-[90vh] bg-card text-foreground rounded-2xl border border-border shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
+      >
         <div className="px-5 py-3.5 border-b border-border bg-card/90 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">

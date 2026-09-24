@@ -49,8 +49,19 @@ export interface Task {
   updatedAt: string;
   completedAt?: string;
   notes?: TaskNote[];
+  subtasks?: Subtask[];
 }
 
+export interface Subtask {
+  id: string;
+  taskId: string;
+  title: string;
+  isCompleted: boolean;
+  startTime?: string; // HH:mm optional start time
+  endTime?: string;   // HH:mm optional end time
+  priority?: Priority; // LOW | MEDIUM | HIGH optional
+  createdAt: string;
+}
 export interface TaskNote {
   id: string;
   taskId: string;

@@ -167,6 +167,18 @@ CREATE TABLE IF NOT EXISTS task_tags (
   FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
   FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS subtasks (
+  id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  is_completed INTEGER DEFAULT 0,
+  start_time TEXT,
+  end_time TEXT,
+  time TEXT,
+  priority TEXT DEFAULT 'MEDIUM',
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+);
 
 CREATE TABLE IF NOT EXISTS task_notes (
   id TEXT PRIMARY KEY,
@@ -289,6 +301,24 @@ export async function getDatabase(): Promise<Database> {
         FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
       );`);
     } catch (e) {}
+    try {
+      db.run(`CREATE TABLE IF NOT EXISTS subtasks (
+        id TEXT PRIMARY KEY,
+        task_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        is_completed INTEGER DEFAULT 0,
+        start_time TEXT,
+        end_time TEXT,
+        time TEXT,
+        priority TEXT DEFAULT 'MEDIUM',
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+      );`);
+    } catch (e) {}
+    try { db.run("ALTER TABLE subtasks ADD COLUMN start_time TEXT;"); } catch (e) {}
+    try { db.run("ALTER TABLE subtasks ADD COLUMN end_time TEXT;"); } catch (e) {}
+    try { db.run("ALTER TABLE subtasks ADD COLUMN time TEXT;"); } catch (e) {}
+    try { db.run("ALTER TABLE subtasks ADD COLUMN priority TEXT DEFAULT 'MEDIUM';"); } catch (e) {}
     dbInstance = db;
     return db;
   })();

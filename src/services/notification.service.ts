@@ -29,13 +29,13 @@ class NotificationServiceManager {
     // Pre-warm / unlock Web Audio API on first user interaction (critical for iOS Safari)
     this.setupAudioUnlock();
 
-    // Run check every 15 seconds
+    // Run check every 20 seconds
     this.timer = window.setInterval(() => {
       this.checkTasks();
-    }, 15000);
+    }, 20000);
 
     // Initial check after startup
-    setTimeout(() => this.checkTasks(), 2500);
+    setTimeout(() => this.checkTasks(), 3000);
   }
 
   private setupAudioUnlock(): void {
@@ -80,7 +80,6 @@ class NotificationServiceManager {
     }
 
     try {
-      // Must be called inside user interaction handler on iOS Safari 16.4+
       const result = await Notification.requestPermission();
       if (result === 'granted') {
         this.playNotificationSound();
@@ -120,20 +119,28 @@ class NotificationServiceManager {
       const diffStart = startMinutes - currentMinutes;
       const reminderBefore = task.reminderMinutesBefore ?? 10;
 
-      // 1. UPCOMING REMINDER: Before start time
+      // 1. UPCOMING REMINDER (Before start time, fire strictly ONCE unless snoozed)
       if (diffStart >= 0 && diffStart <= reminderBefore) {
         const key = `upcoming-${task.id}-${todayStr}-${task.startTime}`;
         const snoozedTime = this.snoozedUntil.get(key);
 
-        if (!snoozedTime || Date.now() >= snoozedTime) {
-          if (!this.notifiedKeys.has(key) || (snoozedTime && Date.now() >= snoozedTime)) {
-            this.notifiedKeys.add(key);
-            this.triggerUpcomingNotification(task, diffStart);
+        if (snoozedTime) {
+          // If snooze period is still active, skip
+          if (Date.now() < snoozedTime) {
+            continue;
           }
+          // Snooze period has expired: fire once and delete the snooze entry!
+          this.snoozedUntil.delete(key);
+          this.notifiedKeys.add(key);
+          this.triggerUpcomingNotification(task, diffStart);
+        } else if (!this.notifiedKeys.has(key)) {
+          // Has not been notified yet: fire once and permanently record key!
+          this.notifiedKeys.add(key);
+          this.triggerUpcomingNotification(task, diffStart);
         }
       }
 
-      // 2. CHECK-IN PROMPT: >= 50% of duration has passed
+      // 2. CHECK-IN PROMPT (>= 50% of duration has passed, fire strictly ONCE unless snoozed)
       if (currentMinutes > startMinutes) {
         let endMinutes = startMinutes + (task.estimatedMinutes || 30);
         if (task.endTime) {
@@ -147,25 +154,30 @@ class NotificationServiceManager {
         const elapsed = currentMinutes - startMinutes;
         const progressPercent = Math.min(100, Math.round((elapsed / duration) * 100));
 
-        // When >= 50% elapsed and task is still not done
+        // When >= 50% elapsed and task is still active
         if (progressPercent >= 50) {
           const key = `checkin-${task.id}-${todayStr}-${task.startTime}`;
           const snoozedTime = this.snoozedUntil.get(key);
 
-          if (!snoozedTime || Date.now() >= snoozedTime) {
-            if (!this.notifiedKeys.has(key) || (snoozedTime && Date.now() >= snoozedTime)) {
-              eligibleCheckInTasks.push(task);
+          if (snoozedTime) {
+            if (Date.now() < snoozedTime) {
+              continue;
             }
+            // Snooze expired: fire once and clear snooze entry
+            this.snoozedUntil.delete(key);
+            this.notifiedKeys.add(key);
+            eligibleCheckInTasks.push(task);
+          } else if (!this.notifiedKeys.has(key)) {
+            // First time >= 50%: fire once and record key
+            this.notifiedKeys.add(key);
+            eligibleCheckInTasks.push(task);
           }
         }
       }
     }
 
-    // Trigger multi-task check-in if any tasks are eligible
+    // Trigger multi-task check-in strictly once for the eligible tasks
     if (eligibleCheckInTasks.length > 0) {
-      eligibleCheckInTasks.forEach((t) => {
-        this.notifiedKeys.add(`checkin-${t.id}-${todayStr}-${t.startTime}`);
-      });
       this.triggerCheckInNotification(eligibleCheckInTasks);
     }
   }
@@ -175,14 +187,14 @@ class NotificationServiceManager {
     const title = `⏰ Sắp tới giờ: ${task.title}`;
     const body = `Công việc bắt đầu ${minutesText} (lúc ${task.startTime}). Chuẩn bị nhé!`;
 
-    // Mobile Haptic Vibration
+    // Mobile Haptic Vibration (fire once)
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       try { navigator.vibrate([80, 40, 80]); } catch {}
     }
 
     this.playNotificationSound();
 
-    // System Push Notification
+    // System Push Notification (with stable tag to prevent duplicate system alerts)
     if (this.getPermissionStatus() === 'granted') {
       try {
         if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
@@ -206,9 +218,9 @@ class NotificationServiceManager {
       }
     }
 
-    // Emit in-app banner (NO premature Done button!)
+    // Emit in-app banner with stable unique ID
     const notif: ActiveNotification = {
-      id: `upcoming-${Date.now()}-${task.id}`,
+      id: `upcoming-${task.id}`,
       type: 'upcoming',
       task,
       dueInMinutes: diffMinutes,
@@ -243,12 +255,13 @@ class NotificationServiceManager {
             body,
             icon: '/apple-touch-icon.png',
             badge: '/favicon-32x32.png',
-            tag: `checkin-group-${Date.now()}`,
+            tag: `checkin-group`,
           });
         } else if ('Notification' in window) {
           new Notification(title, {
             body,
             icon: '/apple-touch-icon.png',
+            tag: `checkin-group`,
           });
         }
       } catch (err) {
@@ -256,9 +269,9 @@ class NotificationServiceManager {
       }
     }
 
-    // Emit in-app check-in banner
+    // Stable ID to prevent duplicate banners
     const notif: ActiveNotification = {
-      id: `checkin-${Date.now()}`,
+      id: `checkin-active-group`,
       type: 'check_in',
       task: tasks[0],
       tasks,
@@ -270,11 +283,19 @@ class NotificationServiceManager {
 
   snooze(taskId: string, minutes: number): void {
     const until = Date.now() + minutes * 60 * 1000;
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    // Find and set snooze for upcoming or checkin keys
     for (const key of this.notifiedKeys) {
       if (key.includes(taskId)) {
         this.snoozedUntil.set(key, until);
       }
     }
+
+    // Also explicitly set for standard key patterns if not yet in notifiedKeys
+    this.snoozedUntil.set(`upcoming-${taskId}-${todayStr}`, until);
+    this.snoozedUntil.set(`checkin-${taskId}-${todayStr}`, until);
   }
 
   playNotificationSound(): void {

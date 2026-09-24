@@ -25,8 +25,14 @@ export const NotificationBanner: React.FC<NotificationBannerProps> = ({ onDataMu
   useEffect(() => {
     const unsubscribe = NotificationService.subscribe((notif) => {
       setActiveNotifs((prev) => {
-        // Prevent duplicate IDs
-        if (prev.some((n) => n.id === notif.id)) return prev;
+        const existingIdx = prev.findIndex(
+          (n) => n.id === notif.id || (n.type === 'check_in' && notif.type === 'check_in')
+        );
+        if (existingIdx >= 0) {
+          const next = [...prev];
+          next[existingIdx] = notif;
+          return next;
+        }
         return [...prev, notif];
       });
     });
