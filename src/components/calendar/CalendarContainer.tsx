@@ -60,12 +60,11 @@ export const CalendarContainer: React.FC<CalendarContainerProps> = ({
   });
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden bg-background">
+    <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden bg-background">
       {/* Sub-Header Navigation */}
-      <div className="h-12 border-b border-border px-4 flex items-center justify-between bg-card/50 backdrop-blur-xs">
-        <div className="flex items-center gap-3">
+      <div className="h-11 sm:h-12 border-b border-border px-3 sm:px-4 flex items-center justify-between bg-card/60 backdrop-blur-xs shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
-            onClick={handleToday}
             className="px-3 py-1 text-xs font-semibold rounded-lg border border-border bg-secondary/80 hover:bg-secondary text-foreground transition-all shadow-xs"
           >
             Hôm nay

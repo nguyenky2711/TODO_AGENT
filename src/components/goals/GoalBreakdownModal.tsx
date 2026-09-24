@@ -60,7 +60,7 @@ export const GoalBreakdownModal: React.FC<GoalBreakdownModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in">
       <div className="relative w-full max-w-2xl bg-card text-foreground rounded-2xl border border-border shadow-2xl overflow-hidden flex flex-col max-h-[88vh]">
         {/* Header */}
         <div className="px-5 py-4 border-b border-border flex items-center justify-between bg-card/80">

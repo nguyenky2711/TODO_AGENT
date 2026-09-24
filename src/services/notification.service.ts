@@ -1,10 +1,15 @@
 import { TaskService } from './task.service';
 import { Task } from '../types';
 
+export type NotificationType = 'upcoming' | 'check_in';
+
 export interface ActiveNotification {
   id: string;
+  type: NotificationType;
   task: Task;
-  dueInMinutes: number;
+  tasks?: Task[]; // For multi-task parallel check-ins
+  dueInMinutes?: number;
+  progressPercent?: number;
   timestamp: number;
 }
 
@@ -12,7 +17,7 @@ type NotificationListener = (notif: ActiveNotification) => void;
 
 class NotificationServiceManager {
   private listeners: Set<NotificationListener> = new Set();
-  private notifiedTaskKeys: Set<string> = new Set();
+  private notifiedKeys: Set<string> = new Set();
   private snoozedUntil: Map<string, number> = new Map();
   private timer: number | null = null;
   private audioCtx: AudioContext | null = null;
@@ -24,13 +29,13 @@ class NotificationServiceManager {
     // Pre-warm / unlock Web Audio API on first user interaction (critical for iOS Safari)
     this.setupAudioUnlock();
 
-    // Run check every 20 seconds
+    // Run check every 15 seconds
     this.timer = window.setInterval(() => {
-      this.checkUpcomingTasks();
-    }, 20000);
+      this.checkTasks();
+    }, 15000);
 
     // Initial check after startup
-    setTimeout(() => this.checkUpcomingTasks(), 2500);
+    setTimeout(() => this.checkTasks(), 2500);
   }
 
   private setupAudioUnlock(): void {
@@ -94,58 +99,90 @@ class NotificationServiceManager {
     };
   }
 
-  async checkUpcomingTasks(): Promise<void> {
+  async checkTasks(): Promise<void> {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
     const tasks = await TaskService.getAll({
       startDate: todayStr,
-      status: 'TODO',
     });
 
-    for (const task of tasks) {
-      if (!task.startTime) continue;
-      const [th, tm] = task.startTime.split(':').map(Number);
-      if (isNaN(th) || isNaN(tm)) continue;
+    const activeTasks = tasks.filter((t) => t.status === 'TODO' || t.status === 'IN_PROGRESS');
+    const eligibleCheckInTasks: Task[] = [];
 
-      const taskMinutes = th * 60 + tm;
-      const diffMinutes = taskMinutes - currentMinutes;
+    for (const task of activeTasks) {
+      if (!task.startTime) continue;
+      const [sh, sm] = task.startTime.split(':').map(Number);
+      if (isNaN(sh) || isNaN(sm)) continue;
+
+      const startMinutes = sh * 60 + sm;
+      const diffStart = startMinutes - currentMinutes;
       const reminderBefore = task.reminderMinutesBefore ?? 10;
 
-      // Check if within reminder window and not in the past
-      if (diffMinutes >= 0 && diffMinutes <= reminderBefore) {
-        const key = `${task.id}-${todayStr}-${task.startTime}`;
+      // 1. UPCOMING REMINDER: Before start time
+      if (diffStart >= 0 && diffStart <= reminderBefore) {
+        const key = `upcoming-${task.id}-${todayStr}-${task.startTime}`;
         const snoozedTime = this.snoozedUntil.get(key);
 
-        if (snoozedTime && Date.now() < snoozedTime) {
-          continue; // still snoozing
+        if (!snoozedTime || Date.now() >= snoozedTime) {
+          if (!this.notifiedKeys.has(key) || (snoozedTime && Date.now() >= snoozedTime)) {
+            this.notifiedKeys.add(key);
+            this.triggerUpcomingNotification(task, diffStart);
+          }
+        }
+      }
+
+      // 2. CHECK-IN PROMPT: >= 50% of duration has passed
+      if (currentMinutes > startMinutes) {
+        let endMinutes = startMinutes + (task.estimatedMinutes || 30);
+        if (task.endTime) {
+          const [eh, em] = task.endTime.split(':').map(Number);
+          if (!isNaN(eh) && !isNaN(em)) {
+            endMinutes = eh * 60 + em;
+          }
         }
 
-        if (!this.notifiedTaskKeys.has(key) || (snoozedTime && Date.now() >= snoozedTime)) {
-          this.notifiedTaskKeys.add(key);
-          this.triggerNotification(task, diffMinutes);
+        const duration = Math.max(15, endMinutes - startMinutes);
+        const elapsed = currentMinutes - startMinutes;
+        const progressPercent = Math.min(100, Math.round((elapsed / duration) * 100));
+
+        // When >= 50% elapsed and task is still not done
+        if (progressPercent >= 50) {
+          const key = `checkin-${task.id}-${todayStr}-${task.startTime}`;
+          const snoozedTime = this.snoozedUntil.get(key);
+
+          if (!snoozedTime || Date.now() >= snoozedTime) {
+            if (!this.notifiedKeys.has(key) || (snoozedTime && Date.now() >= snoozedTime)) {
+              eligibleCheckInTasks.push(task);
+            }
+          }
         }
       }
     }
+
+    // Trigger multi-task check-in if any tasks are eligible
+    if (eligibleCheckInTasks.length > 0) {
+      eligibleCheckInTasks.forEach((t) => {
+        this.notifiedKeys.add(`checkin-${t.id}-${todayStr}-${t.startTime}`);
+      });
+      this.triggerCheckInNotification(eligibleCheckInTasks);
+    }
   }
 
-  async triggerNotification(task: Task, diffMinutes: number): Promise<void> {
+  private async triggerUpcomingNotification(task: Task, diffMinutes: number): Promise<void> {
     const minutesText = diffMinutes === 0 ? 'ngay bây giờ' : `sau ${diffMinutes} phút`;
-    const title = `⏰ Nhắc việc: ${task.title}`;
-    const body = `Bắt đầu ${minutesText} (lúc ${task.startTime}).`;
+    const title = `⏰ Sắp tới giờ: ${task.title}`;
+    const body = `Công việc bắt đầu ${minutesText} (lúc ${task.startTime}). Chuẩn bị nhé!`;
 
-    // 1. Mobile Haptic Vibration feedback if supported
+    // Mobile Haptic Vibration
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-      try {
-        navigator.vibrate([100, 50, 100]);
-      } catch {}
+      try { navigator.vibrate([80, 40, 80]); } catch {}
     }
 
-    // 2. Play subtle pleasant chime
     this.playNotificationSound();
 
-    // 3. System / Push Notification (ServiceWorker on iOS/Mobile or Native window.Notification)
+    // System Push Notification
     if (this.getPermissionStatus() === 'granted') {
       try {
         if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
@@ -154,24 +191,25 @@ class NotificationServiceManager {
             body,
             icon: '/apple-touch-icon.png',
             badge: '/favicon-32x32.png',
-            tag: `task-reminder-${task.id}`,
+            tag: `upcoming-${task.id}`,
             data: { taskId: task.id },
           });
         } else if ('Notification' in window) {
           new Notification(title, {
             body,
             icon: '/apple-touch-icon.png',
-            tag: `task-reminder-${task.id}`,
+            tag: `upcoming-${task.id}`,
           });
         }
       } catch (err) {
-        console.warn('System notification display failed:', err);
+        console.warn('System notification error:', err);
       }
     }
 
-    // 4. In-App Interactive Notification Banner
+    // Emit in-app banner (NO premature Done button!)
     const notif: ActiveNotification = {
-      id: `notif-${Date.now()}-${task.id}`,
+      id: `upcoming-${Date.now()}-${task.id}`,
+      type: 'upcoming',
       task,
       dueInMinutes: diffMinutes,
       timestamp: Date.now(),
@@ -180,10 +218,61 @@ class NotificationServiceManager {
     this.listeners.forEach((l) => l(notif));
   }
 
+  private async triggerCheckInNotification(tasks: Task[]): Promise<void> {
+    const title = tasks.length === 1
+      ? `💡 Đã hoàn thành: ${tasks[0].title}?`
+      : `💡 Kiểm tra tiến độ (${tasks.length} việc đang diễn ra)`;
+    
+    const body = tasks.length === 1
+      ? `Đã qua hơn 50% thời gian. Bạn đã xong việc này chưa?`
+      : `Có ${tasks.length} công việc đã hoàn thành hoặc gần hết giờ. Bấm để xác nhận!`;
+
+    // Mobile Haptic Vibration
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try { navigator.vibrate([100, 50, 100]); } catch {}
+    }
+
+    this.playNotificationSound();
+
+    // System Push Notification
+    if (this.getPermissionStatus() === 'granted') {
+      try {
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          const reg = await navigator.serviceWorker.ready;
+          await reg.showNotification(title, {
+            body,
+            icon: '/apple-touch-icon.png',
+            badge: '/favicon-32x32.png',
+            tag: `checkin-group-${Date.now()}`,
+          });
+        } else if ('Notification' in window) {
+          new Notification(title, {
+            body,
+            icon: '/apple-touch-icon.png',
+          });
+        }
+      } catch (err) {
+        console.warn('Check-in notification error:', err);
+      }
+    }
+
+    // Emit in-app check-in banner
+    const notif: ActiveNotification = {
+      id: `checkin-${Date.now()}`,
+      type: 'check_in',
+      task: tasks[0],
+      tasks,
+      timestamp: Date.now(),
+    };
+
+    this.listeners.forEach((l) => l(notif));
+  }
+
   snooze(taskId: string, minutes: number): void {
-    for (const key of this.notifiedTaskKeys) {
-      if (key.startsWith(taskId)) {
-        this.snoozedUntil.set(key, Date.now() + minutes * 60 * 1000);
+    const until = Date.now() + minutes * 60 * 1000;
+    for (const key of this.notifiedKeys) {
+      if (key.includes(taskId)) {
+        this.snoozedUntil.set(key, until);
       }
     }
   }

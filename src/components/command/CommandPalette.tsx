@@ -206,7 +206,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/60 backdrop-blur-sm p-4 select-none">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-20 bg-black/30 backdrop-blur-xs p-3 sm:p-4 select-none">
       <div className="w-full max-w-lg rounded-2xl bg-card border border-border shadow-2xl overflow-hidden flex flex-col max-h-[70vh]">
         {/* Search Header */}
         <div className="p-3 border-b border-border flex items-center gap-2.5 bg-card">

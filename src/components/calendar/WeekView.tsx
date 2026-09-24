@@ -79,12 +79,13 @@ export const WeekView: React.FC<WeekViewProps> = ({
   const hoursArray = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
 
   return (
-    <div className="flex flex-col h-full bg-card/40 overflow-hidden select-none">
-      {/* Week Header */}
-      <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border bg-card/80 backdrop-blur-md sticky top-0 z-20">
-        <div className="p-3 text-center border-r border-border/60 text-xs font-semibold text-muted-foreground flex items-center justify-center">
-          <Clock className="w-3.5 h-3.5" />
-        </div>
+    <div className="flex flex-col h-full bg-card/40 overflow-x-auto overflow-y-hidden select-none">
+      <div className="min-w-[680px] md:min-w-full flex flex-col h-full">
+        {/* Week Header */}
+        <div className="grid grid-cols-[54px_repeat(7,1fr)] border-b border-border bg-card/85 backdrop-blur-md sticky top-0 z-20">
+          <div className="p-3 text-center border-r border-border/60 text-xs font-semibold text-muted-foreground flex items-center justify-center sticky left-0 z-30 bg-card/95 backdrop-blur-md shadow-xs">
+            <Clock className="w-3.5 h-3.5" />
+          </div>
         {daysOfWeek.map((day, idx) => {
           const dStr = formatDate(day);
           const isToday = dStr === todayStr;
@@ -127,13 +128,12 @@ export const WeekView: React.FC<WeekViewProps> = ({
               <div
                 key={hour}
                 data-hour={hour}
-                className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border/40 min-h-[64px] group/row relative"
+                className="grid grid-cols-[54px_repeat(7,1fr)] border-b border-border/40 min-h-[64px] group/row relative"
               >
-                {/* Time Label Column */}
-                <div className="border-r border-border/60 select-none bg-card/20 p-2 text-right font-mono text-[11px] text-muted-foreground/80 flex items-start justify-end">
+                {/* Sticky Time Label Column */}
+                <div className="border-r border-border/60 select-none bg-card/95 backdrop-blur-md p-2 text-right font-mono text-[11px] text-muted-foreground/80 flex items-start justify-end sticky left-0 z-10 shadow-xs">
                   <span className="-mt-1">{`${hour.toString().padStart(2, '0')}:00`}</span>
                 </div>
-
                 {/* 7 Days Columns for this Hour */}
                 {daysOfWeek.map((day, dayIdx) => {
                   const dateStr = formatDate(day);
@@ -258,6 +258,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
             );
           })}
         </div>
+      </div>
       </div>
     </div>
   );

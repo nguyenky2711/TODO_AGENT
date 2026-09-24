@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Calendar as CalendarIcon, FolderKanban, Plus, Search, Sparkles } from 'lucide-react';
 import { CalendarViewMode, ThemeMode, Task, Project } from './types';
+import { cn } from './lib/utils';
 import { Navbar } from './components/layout/Navbar';
 import { AppSidebar } from './components/sidebar/AppSidebar';
 import { CalendarContainer } from './components/calendar/CalendarContainer';
@@ -33,9 +35,12 @@ export const App: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isDbReady, setIsDbReady] = useState(false);
-
-  // Modals & Panels state
-  const [isAgentOpen, setIsAgentOpen] = useState(true);
+  // Modals & Panels state (Responsive default: Agent closed on mobile unless ?agent=true)
+  const [isAgentOpen, setIsAgentOpen] = useState(() => {
+    if (typeof window !== 'undefined' && window.location.search.includes('agent=true')) return true;
+    return typeof window !== 'undefined' ? window.innerWidth >= 1280 : false;
+  });
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(() => typeof window !== 'undefined' && window.location.search.includes('sidebar=true'));
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -245,6 +250,8 @@ export const App: React.FC = () => {
         }}
         onOpenGoalBreakdown={() => setIsGoalModalOpen(true)}
         onOpenUserGuide={() => setIsUserGuideOpen(true)}
+        onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
+        isMobileSidebarOpen={isMobileSidebarOpen}
       />
 
       {/* Main Workspace: 3 Columns */}
@@ -254,7 +261,10 @@ export const App: React.FC = () => {
           projects={projects}
           unscheduledTasks={unscheduledTasks}
           selectedProjectId={selectedProjectId}
-          onSelectProject={setSelectedProjectId}
+          onSelectProject={(id) => {
+            setSelectedProjectId(id);
+            setIsMobileSidebarOpen(false);
+          }}
           onOpenProjectModal={() => {
             setEditingProject(null);
             setIsProjectModalOpen(true);
@@ -274,8 +284,9 @@ export const App: React.FC = () => {
           }}
           onCompleteTask={handleCompleteTask}
           onBatchDeleteTasks={handleBatchDeleteTasks}
+          isMobileOpen={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
         />
-
         {/* Center: Google Calendar Grid Container */}
         <CalendarContainer
           viewMode={viewMode}
@@ -299,6 +310,78 @@ export const App: React.FC = () => {
           onOpenGuide={() => setIsUserGuideOpen(true)}
         />
       </div>
+      {/* Mobile Bottom Navigation Bar (Visible on < lg) */}
+      <nav className="lg:hidden h-14 border-t border-border bg-card/95 backdrop-blur-xl px-2 flex items-center justify-around z-30 shrink-0 select-none">
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedProjectId(null);
+            setIsMobileSidebarOpen(false);
+            setIsAgentOpen(false);
+          }}
+          className={cn(
+            'flex flex-col items-center gap-1 py-1 px-3 rounded-lg text-[10px] font-medium transition-colors',
+            !isMobileSidebarOpen && !isAgentOpen ? 'text-primary font-bold' : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <CalendarIcon className="w-4 h-4" />
+          <span>Lịch</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setIsAgentOpen(false);
+            setIsMobileSidebarOpen((prev) => !prev);
+          }}
+          className={cn(
+            'flex flex-col items-center gap-1 py-1 px-3 rounded-lg text-[10px] font-medium transition-colors',
+            isMobileSidebarOpen ? 'text-primary font-bold' : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <FolderKanban className="w-4 h-4" />
+          <span>Dự án</span>
+        </button>
+
+        {/* Quick Add Center FAB */}
+        <button
+          type="button"
+          onClick={() => {
+            setEditingTask(null);
+            setQuickCreateDate(undefined);
+            setQuickCreateTime(undefined);
+            setIsTaskModalOpen(true);
+          }}
+          className="w-10 h-10 -mt-4 rounded-full bg-gradient-to-tr from-primary to-neon-purple text-white flex items-center justify-center shadow-neon-glow active:scale-95 transition-transform"
+          title="Tạo việc mới"
+        >
+          <Plus className="w-5 h-5 stroke-[2.5]" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsCommandPaletteOpen(true)}
+          className="flex flex-col items-center gap-1 py-1 px-3 rounded-lg text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Search className="w-4 h-4" />
+          <span>Tìm kiếm</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setIsMobileSidebarOpen(false);
+            setIsAgentOpen((prev) => !prev);
+          }}
+          className={cn(
+            'flex flex-col items-center gap-1 py-1 px-3 rounded-lg text-[10px] font-medium transition-colors',
+            isAgentOpen ? 'text-neon-pink font-bold' : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <Sparkles className="w-4 h-4 text-neon-cyan" />
+          <span>AI Agent</span>
+        </button>
+      </nav>
 
       {/* Overlays and Modals */}
       <TaskModal
